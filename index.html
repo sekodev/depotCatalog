@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Depo Kataloğu / Depot Catalog - offline single-file app">
+<title>Depot Catalog</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+/* ---------- Reset & theme tokens ---------- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6f8;
+  --surface:#ffffff;
+  --text:#1d2733;
+  --muted:#5b6b7b;
+  --border:#d7dee6;
+  --accent:#1663c7;
+  --accent-hover:#0e4fa3;
+  --danger:#c0392b;
+  --danger-bg:#fdecea;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c;
+    --surface:#1b222b;
+    --text:#e8edf3;
+    --muted:#9aa8b6;
+    --border:#2c3642;
+    --accent:#4d94f0;
+    --accent-hover:#6ba7f4;
+    --danger:#e05a4e;
+    --danger-bg:#3a2320;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;
+  padding:calc(env(safe-area-inset-top,0px) + 1rem) 1rem calc(env(safe-area-inset-bottom,0px) + 2.5rem);
+}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:1rem}
+
+/* ---------- Header ---------- */
+header{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap}
+h1{font-size:1.35rem;display:flex;align-items:center;gap:.5rem}
+.lang-switch{display:flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:var(--surface)}
+.lang-switch button{
+  background:none;border:none;padding:.35rem .85rem;font-size:.85rem;font-weight:700;
+  color:var(--muted);cursor:pointer;min-height:44px;min-width:52px;
+}
+.lang-switch button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+/* ---------- Cards & form ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}
+.card h2{font-size:1rem;margin-bottom:.75rem}
+form#productForm{display:grid;gap:.75rem;grid-template-columns:1fr}
+.field label{display:block;font-size:.8rem;font-weight:600;margin-bottom:.25rem;color:var(--muted)}
+input[type="text"],input[type="search"]{
+  width:100%;padding:.65rem .75rem;font-size:1rem;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);
+}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.err{font-size:.82rem;color:var(--danger);margin-top:.3rem}
+.search-input{margin-bottom:.25rem}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
+  padding:.6rem 1.05rem;font-size:.95rem;font-weight:600;
+  border:none;border-radius:8px;cursor:pointer;min-height:44px;
+  font-family:inherit;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{background:transparent;color:var(--accent);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent)}
+.btn-danger{background:var(--danger);color:#fff}
+.form-actions{display:flex;flex-direction:row;gap:.5rem;align-items:end}
+.hidden{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- Stock list ---------- */
+.list-card{padding:0;overflow:hidden}
+.list-head{
+  display:grid;grid-template-columns:2fr 1.5fr auto;gap:.75rem;
+  padding:.6rem 1rem;font-size:.75rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  border-bottom:1px solid var(--border);
+}
+.row{
+  display:grid;grid-template-columns:2fr 1.5fr auto;gap:.75rem;align-items:center;
+  padding:.6rem 1rem;border-bottom:1px solid var(--border);
+}
+.row:last-child{border-bottom:none}
+.row .name{word-break:break-word}
+.row .loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;word-break:break-word}
+.row .actions{display:flex;gap:.35rem}
+.icon-btn{
+  background:none;border:1px solid transparent;border-radius:8px;
+  width:44px;height:44px;font-size:1.15rem;line-height:1;cursor:pointer;
+  color:var(--muted);
+}
+.icon-btn:hover{background:var(--bg);color:var(--text)}
+.icon-btn.del:hover{color:var(--danger);background:var(--danger-bg)}
+.empty-state{padding:2rem 1rem;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.5}
+
+/* ---------- Toolbar ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between}
+.count{font-size:.87rem;color:var(--muted)}
+.toolbar .group{display:flex;gap:.5rem;flex-wrap:wrap}
+
+/* ---------- Banner / Modal / Toast ---------- */
+.banner{
+  background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);
+  border-radius:var(--radius);padding:.7rem 1rem;font-size:.9rem;line-height:1.45;
+}
+.overlay{
+  position:fixed;inset:0;background:rgba(10,14,20,.55);
+  display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50;
+}
+.modal{
+  background:var(--surface);border-radius:var(--radius);
+  max-width:420px;width:100%;padding:1.25rem;
+  box-shadow:0 12px 32px rgba(0,0,0,.28);
+}
+.modal h2{font-size:1.05rem;margin-bottom:.5rem}
+.modal p{font-size:.95rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5}
+.modal-actions{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:max(1.25rem,env(safe-area-inset-bottom,0px));
+  background:var(--text);color:var(--bg);
+  padding:.7rem 1.15rem;border-radius:999px;font-size:.9rem;
+  z-index:60;opacity:0;transition:opacity .25s ease;
+  pointer-events:none;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1}
+
+/* ---------- Name suggestions dropdown ---------- */
+.field{position:relative}
+.suggest{
+  position:absolute;top:100%;left:0;right:0;z-index:20;margin-top:.15rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;
+}
+.suggest-item{
+  display:flex;justify-content:space-between;gap:.75rem;
+  padding:.55rem .75rem;font-size:.92rem;cursor:default;
+  border-bottom:1px solid var(--border);
+}
+.suggest-item:last-child{border-bottom:none}
+.suggest-item .sg-name{word-break:break-word}
+.suggest-item .sg-loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}
+
+/* ---------- Edit-mode form highlight ---------- */
+#formCard.editing{border-color:var(--accent);animation:pulseBorder 1s ease-in-out 3}
+@keyframes pulseBorder{
+  0%,100%{box-shadow:0 0 0 0 rgba(77,148,240,0)}
+  50%{box-shadow:0 0 0 4px rgba(77,148,240,.45)}
+}
+@media (prefers-reduced-motion: reduce){
+  #formCard.editing{animation:none;border-width:2px}
+}
+
+/* ---------- Footer disclaimer ---------- */
+.disclaimer{text-align:center;font-size:.8rem;color:var(--muted)}
+
+
+/* ---------- Responsive: desktop ---------- */
+@media (min-width:721px){
+  form#productForm{grid-template-columns:2fr 1.5fr auto auto;align-items:end}
+  .search-input{max-width:440px}
+}
+
+/* ---------- Responsive: mobile ---------- */
+@media (max-width:720px){
+  body{padding-left:.75rem;padding-right:.75rem}
+  h1{font-size:1.15rem}
+  .list-head{display:none}
+  .row{
+    grid-template-columns:1fr auto;
+    grid-template-areas:"name actions" "loc actions";
+    row-gap:.2rem;padding:.7rem .85rem;
+  }
+  .row .name{grid-area:name;font-weight:600}
+  .row .loc{grid-area:loc}
+  .row .actions{grid-area:actions;flex-direction:column;align-self:center}
+  .toolbar{flex-direction:column-reverse;align-items:stretch}
+  .count{text-align:center}
+  .toolbar .group{flex-direction:column}
+  .toolbar .group .btn{width:100%}
+}
+</style>
+</head>
+<body>
+<div id="bootstrapError" class="banner hidden">Translation file missing or invalid.</div>
+<div class="wrap" id="appRoot">
+
+  <header>
+    <h1><span aria-hidden="true">📦</span><span id="appTitle"></span></h1>
+    <div class="lang-switch" role="group">
+      <button type="button" id="btnLangTr">TR</button>
+      <button type="button" id="btnLangEn">EN</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <!-- Add / Edit form -->
+  <section class="card" id="formCard">
+    <h2 id="formTitle" tabindex="-1"></h2>
+    <form id="productForm" novalidate>
+      <div class="field">
+        <label for="inpName" id="lblName"></label>
+        <input type="text" id="inpName" maxlength="120" autocomplete="off">
+        <p id="nameError" class="err hidden"></p>
+        <div id="nameSuggest" class="suggest hidden" role="listbox" aria-label=""></div>
+      </div>
+      <div class="field">
+        <label for="inpLoc" id="lblLoc"></label>
+        <input type="text" id="inpLoc" maxlength="120" autocomplete="off">
+      </div>
+      <div class="form-actions field">
+        <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
+        <button type="button" id="btnCancelEdit" class="btn btn-secondary hidden"></button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Live search -->
+  <input type="search" id="inpSearch" class="search-input" autocomplete="off">
+
+
+  <!-- Stock list -->
+  <section class="card list-card">
+    <div class="list-head" aria-hidden="true">
+      <span id="colName"></span>
+      <span id="colLoc"></span>
+      <span></span>
+    </div>
+    <div id="listBody"></div>
+  </section>
+
+  <!-- Toolbar: export / import / count -->
+  <div class="toolbar">
+    <span id="itemCount" class="count"></span>
+    <div class="group">
+      <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
+      <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
+      <input type="file" id="inpImport" accept=".json,application/json" class="sr-only">
+    </div>
+  </div>
+
+  <footer class="disclaimer"><span id="disclaimerText"></span></footer>
+
+</div><!-- /.wrap -->
+
+<!-- Confirmation modal -->
+<div class="overlay hidden" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText">
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+    <div class="modal-actions">
+      <button type="button" id="modalCancel" class="btn btn-secondary"></button>
+      <button type="button" id="modalOk" class="btn btn-danger"></button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="translations.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ================= Constants ================= */
+var LS_ITEMS   = 'depotCatalog.items.v1';
+var LS_LANG    = 'depotCatalog.lang';
+var MAX_SNAPS = 5;
+
+/* ============ i18n (strings live in external translations.js) ============ */
+var LANGUAGES = window.DEPOT_LANGUAGES;
+function languagesValid(arr){
+  if (!Array.isArray(arr) || arr.length === 0) return false;
+  for (var i = 0; i < arr.length; i++){
+    var L = arr[i];
+    if (!L || typeof L.code !== 'string' || typeof L.label !== 'string' ||
+        !L.strings || typeof L.strings !== 'object' ||
+        typeof L.strings.appTitle !== 'string') return false;
+  }
+  return true;
+}
+function getLang(code){
+  for (var i = 0; i < LANGUAGES.length; i++){
+    if (LANGUAGES[i].code === code) return LANGUAGES[i];
+  }
+  return null;
+}
+function detectLang(){
+  var saved = null;
+  try { saved = localStorage.getItem(LS_LANG); } catch(e){}
+  if (saved && getLang(saved)) return saved;
+  var langs = (navigator.languages && navigator.languages.length)
+    ? navigator.languages : [navigator.language || ''];
+  for (var i = 0; i < langs.length; i++){
+    var p = String(langs[i] || '').toLowerCase();
+    for (var j = 0; j < LANGUAGES.length; j++){
+      var c = LANGUAGES[j].code.toLowerCase();
+      if (p === c || p.indexOf(c + '-') === 0) return LANGUAGES[j].code;
+    }
+  }
+  return getLang('en') ? 'en' : LANGUAGES[0].code; // fallback
+}
+function t(key, params){
+  var cur = getLang(state.lang);
+  var s = (cur && cur.strings && cur.strings[key] != null) ? cur.strings[key] : null;
+  if (s == null){
+    var en = getLang('en');
+    if (en && en.strings && en.strings[key] != null) s = en.strings[key];
+  }
+  if (s == null) s = key;
+  if (params){
+    Object.keys(params).forEach(function(k){
+      s = s.split('{' + k + '}').join(String(params[k]));
+    });
+  }
+  return s;
+}
+
+/* ================= App state ================= */
+var state = {
+  items: [],
+  nextId: 1,
+  filter: '',
+  editingId: null,
+  lang: 'en'
+};
+var storageOk = true;
+
+/* ================= DOM refs ================= */
+function $(id){ return document.getElementById(id); }
+var el = {};
+['appTitle','btnLangTr','btnLangEn','banner','formTitle','productForm',
+ 'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit','btnCancelEdit',
+ 'inpSearch','colName','colLoc','listBody','itemCount','btnExport','lblExport',
+ 'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
+ 'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
+ 'appRoot','bootstrapError'
+].forEach(function(id){ el[id] = $(id); });
+
+/* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
+
+/* ================= Store (localStorage) ================= */
+function persist(){
+  if (!storageOk) return true; // in-memory only
+  var payload = JSON.stringify({ version: 1, nextId: state.nextId, items: state.items });
+  try {
+    localStorage.setItem(LS_ITEMS, payload);
+    return true;
+  } catch(e){
+    // Quota likely exceeded: evict old snapshots and retry once
+    if (evictOldestSnapshot()){
+      try { localStorage.setItem(LS_ITEMS, payload); return true; } catch(e2){}
+    }
+    showToast(t('storageWarn'));
+    return false;
+  }
+}
+function loadItems(){
+  try {
+    var raw = localStorage.getItem(LS_ITEMS);
+    if (!raw) return { ok: true, empty: true };
+    var d = JSON.parse(raw);
+    if (!d || typeof d !== 'object' || !Array.isArray(d.items)) return { ok: false };
+    var maxId = 0, clean = [];
+    for (var i = 0; i < d.items.length; i++){
+      var it = d.items[i];
+      if (!it || typeof it.name !== 'string') continue;
+      var rec = {
+        id: (typeof it.id === 'number' && isFinite(it.id)) ? it.id : null,
+        name: String(it.name).slice(0, 200),
+        location: (typeof it.location === 'string') ? String(it.location).slice(0, 200) : ''
+      };
+      if (rec.id !== null && rec.id > maxId) maxId = rec.id;
+      clean.push(rec);
+    }
+    var nextId = (typeof d.nextId === 'number' && d.nextId > maxId) ? d.nextId : maxId + 1;
+    // Ensure every record has an id
+    clean.forEach(function(r){ if (r.id === null) r.id = nextId++; });
+    return { ok: true, items: clean, nextId: nextId };
+  } catch(e){
+    return { ok: false };
+  }
+}
+function checkStorage(){
+  try {
+    var k = '__dc_test__';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    storageOk = true;
+  } catch(e){
+    storageOk = false;
+  }
+}
+
+/* ================= Snapshots (rolling window of 5) ================= */
+/* Snapshots are kept in ONE localStorage key as an array, newest first.
+   This avoids key collisions when several mutations happen in the same
+   millisecond and makes pruning trivial. */
+var LS_SNAPS = 'depotCatalog.snaps.v1';
+function readSnaps(){
+  try {
+    var arr = JSON.parse(localStorage.getItem(LS_SNAPS));
+    return Array.isArray(arr) ? arr : [];
+  } catch(e){ return []; }
+}
+function writeSnaps(snaps){
+  try {
+    localStorage.setItem(LS_SNAPS, JSON.stringify(snaps));
+    return true;
+  } catch(e){ return false; }
+}
+function snapshotCurrentData(){
+  if (!storageOk) return;
+  var entry = { ts: Date.now(), data: { version: 1, nextId: state.nextId, items: state.items } };
+  var snaps = readSnaps();
+  snaps.unshift(entry);
+  while (snaps.length > MAX_SNAPS) snaps.pop(); // rolling window: keep newest 5
+  if (!writeSnaps(snaps)){
+    // Quota likely exceeded: drop oldest snapshots and retry
+    while (snaps.length > 1){
+      snaps.pop();
+      if (writeSnaps(snaps)) return;
+    }
+    showToast(t('storageWarn'));
+  }
+}
+function evictOldestSnapshot(){
+  var snaps = readSnaps();
+  if (snaps.length === 0) return false;
+  snaps.pop();
+  return writeSnaps(snaps);
+}
+
+/* ================= Toast & modal ================= */
+var toastTimer = null;
+function showToast(msg){
+  el.toast.textContent = msg;
+  el.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.toast.classList.remove('show'); }, 3000);
+}
+var confirmResolve = null;
+var lastFocused = null;
+function askConfirm(opts){
+  lastFocused = document.activeElement;
+  el.modalTitle.textContent = opts.title;
+  el.modalText.textContent = opts.message;
+  el.modalOk.textContent = opts.okLabel;
+  el.modalCancel.textContent = t('cancel');
+  el.modalCancel.classList.toggle('hidden', !!opts.alertOnly);
+  el.modalOk.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-primary');
+  el.overlay.classList.remove('hidden');
+  el.modalOk.focus();
+  return new Promise(function(resolve){ confirmResolve = resolve; });
+}
+function closeConfirm(value){
+  el.overlay.classList.add('hidden');
+  if (lastFocused && lastFocused.focus){ try { lastFocused.focus(); } catch(e){} }
+  lastFocused = null;
+  if (confirmResolve){ confirmResolve(value); confirmResolve = null; }
+}
+function showAlert(opts){
+  return askConfirm({
+    title: opts.title,
+    message: opts.message,
+    okLabel: opts.okLabel || t('ok'),
+    danger: !!opts.danger,
+    alertOnly: true
+  }).then(function(){ return true; });
+}
+
+/* ================= Input enhancements ================= */
+var composing = false;
+function autoCapitalizeFirst(inp){
+  if (composing) return;
+  var v = inp.value;
+  if (!v) return;
+  var c = v.charAt(0);
+  var u = c.toUpperCase();
+  if (c !== u && c.toLowerCase() === c){ // only remap letters, leave symbols/digits
+    inp.value = u + v.slice(1);
+  }
+}
+function handleNameInput(){
+  autoCapitalizeFirst(el.inpName);
+  renderSuggestions();
+}
+function handleLocationInput(){
+  // Only auto-uppercase the first letter; no dash is inserted automatically.
+  // Pastes and manual edits are left untouched (autoCapitalizeFirst only
+  // changes the case of an existing leading letter).
+  autoCapitalizeFirst(el.inpLoc);
+}
+function hideSuggestions(){
+  el.nameSuggest.classList.add('hidden');
+  el.nameSuggest.innerHTML = '';
+}
+function renderSuggestions(){
+  hideSuggestions();
+  if (state.editingId !== null) return;      // only in Add mode
+  if (composing) return;
+  var q = el.inpName.value.trim().toLowerCase();
+  if (!q) return;
+  var matches = [];
+  for (var i = 0; i < state.items.length && matches.length < 8; i++){
+    if (state.items[i].name.toLowerCase().indexOf(q) !== -1){
+      matches.push(state.items[i]);
+    }
+  }
+  if (matches.length === 0) return;
+  matches.forEach(function(it){
+    var d = document.createElement('div');
+    d.className = 'suggest-item';
+    d.setAttribute('role', 'option');
+    var n = document.createElement('span');
+    n.className = 'sg-name';
+    n.textContent = it.name;               // textContent => XSS-safe
+    d.appendChild(n);
+    if (it.location){
+      var l = document.createElement('span');
+      l.className = 'sg-loc';
+      l.textContent = it.location;
+      d.appendChild(l);
+    }
+    el.nameSuggest.appendChild(d);
+  });
+  el.nameSuggest.classList.remove('hidden');
+}
+
+/* ================= Rendering ================= */
+function applyStaticText(){
+  document.documentElement.lang = state.lang;
+  document.title = t('docTitle');
+  el.appTitle.textContent = t('appTitle');
+  el.formTitle.textContent = (state.editingId !== null) ? t('editTitle') : t('addTitle');
+  el.lblName.textContent = t('nameLbl');
+  el.lblLoc.textContent = t('locLbl');
+  el.inpName.placeholder = t('phName');
+  el.inpLoc.placeholder = t('phLoc');
+  el.btnSubmit.textContent = (state.editingId !== null) ? t('save') : t('add');
+  el.btnCancelEdit.textContent = t('cancel');
+  el.inpSearch.placeholder = t('searchPh');
+  el.inpSearch.setAttribute('aria-label', t('searchAria'));
+  el.colName.textContent = t('colName');
+  el.colLoc.textContent = t('colLoc');
+  el.itemCount.textContent = t('itemCount', { n: state.items.length });
+  el.lblExport.textContent = t('download');
+  el.lblImport.textContent = t('upload');
+  el.disclaimerText.textContent = t('disclaimer');
+  el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
+  el.formCard.classList.toggle('editing', state.editingId !== null);
+  var trAvail = !!getLang('tr'), enAvail = !!getLang('en');
+  el.btnLangTr.classList.toggle('hidden', !trAvail);
+  el.btnLangEn.classList.toggle('hidden', !enAvail);
+  el.btnLangTr.setAttribute('aria-pressed', String(state.lang === 'tr'));
+  el.btnLangEn.setAttribute('aria-pressed', String(state.lang === 'en'));
+}
+function getFilteredItems(){
+  var q = state.filter.trim().toLowerCase();
+  if (!q) return state.items.slice();
+  return state.items.filter(function(it){
+    return it.name.toLowerCase().indexOf(q) !== -1 ||
+           it.location.toLowerCase().indexOf(q) !== -1;
+  });
+}
+function makeCell(text, cls){
+  var d = document.createElement('div');
+  d.className = cls;
+  d.textContent = text; // textContent => XSS-safe
+  return d;
+}
+function renderList(){
+  var body = el.listBody;
+  body.innerHTML = '';
+  if (state.items.length === 0){
+    var empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = t('emptyList');
+    body.appendChild(empty);
+    return;
+  }
+  var filtered = getFilteredItems();
+  if (filtered.length === 0){
+    var none = document.createElement('div');
+    none.className = 'empty-state';
+    none.textContent = t('noResults', { query: state.filter.trim() });
+    body.appendChild(none);
+    return;
+  }
+  filtered.forEach(function(it){
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.appendChild(makeCell(it.name, 'name'));
+    row.appendChild(makeCell(it.location, 'loc'));
+
+    var actions = document.createElement('div');
+    actions.className = 'actions';
+
+    var btnEdit = document.createElement('button');
+    btnEdit.type = 'button';
+    btnEdit.className = 'icon-btn';
+    btnEdit.textContent = '\u270F\uFE0F'; // pencil
+    btnEdit.setAttribute('aria-label', t('editAria', { name: it.name }));
+    btnEdit.addEventListener('click', function(){ startEdit(it.id); });
+
+    var btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'icon-btn del';
+    btnDel.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
+    btnDel.setAttribute('aria-label', t('delAria', { name: it.name }));
+    btnDel.addEventListener('click', function(){ handleDelete(it.id); });
+
+    actions.appendChild(btnEdit);
+    actions.appendChild(btnDel);
+    row.appendChild(actions);
+    body.appendChild(row);
+  });
+}
+function render(){
+  applyStaticText();
+  renderList();
+}
+
+/* ================= CRUD ================= */
+function resetForm(){
+  state.editingId = null;
+  el.inpName.value = '';
+  el.inpLoc.value = '';
+  el.nameError.classList.add('hidden');
+  hideSuggestions();
+  applyStaticText();
+}
+function findById(id){
+  for (var i = 0; i < state.items.length; i++){
+    if (state.items[i].id === id) return state.items[i];
+  }
+  return null;
+}
+function startEdit(id){
+  var it = findById(id);
+  if (!it) return;
+  state.editingId = id;
+  el.inpName.value = it.name;
+  el.inpLoc.value = it.location;
+  el.nameError.classList.add('hidden');
+  hideSuggestions();
+  applyStaticText(); // also toggles the .editing highlight class on the form card
+  try {
+    el.formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e){
+    try { el.formCard.scrollIntoView(); } catch(e2){}
+  }
+  try { el.formTitle.focus(); } catch(e3){} // announce section to screen readers
+}
+async function handleFormSubmit(ev){
+  ev.preventDefault();
+  var name = el.inpName.value.trim();
+  var location = el.inpLoc.value.trim();
+  if (!name){
+    el.nameError.textContent = t('nameReq');
+    el.nameError.classList.remove('hidden');
+    el.inpName.focus();
+    return;
+  }
+  el.nameError.classList.add('hidden');
+  hideSuggestions();
+  if (state.editingId === null){
+    var nl = name.toLowerCase();
+    var ll = location.toLowerCase();
+    var exact = false, sameName = false;
+    for (var i = 0; i < state.items.length; i++){
+      var it0 = state.items[i];
+      if (it0.name.toLowerCase() === nl){
+        sameName = true;
+        if (it0.location.toLowerCase() === ll){ exact = true; break; }
+      }
+    }
+    if (exact){
+      // Same name AND same location => blocked
+      showAlert({
+        title: t('dupExactTitle'),
+        message: t('dupExactMsg', { name: name, location: location }),
+        danger: true
+      });
+      return;
+    }
+    if (sameName){
+      // Same name, different location => warn but allow
+      var go1 = await askConfirm({
+        title: t('dupWarnTitle'),
+        message: t('dupWarnMsg', { name: name }),
+        okLabel: t('contAnyway'),
+        danger: true
+      });
+      if (!go1) return;
+    }
+    if (!location){
+      var go2 = await askConfirm({
+        title: t('locMissingTitle'),
+        message: t('locMissingMsg', { name: name }),
+        okLabel: t('contAnyway'),
+        danger: false
+      });
+      if (!go2){ el.inpLoc.focus(); return; }
+    }
+    state.items.push({ id: state.nextId++, name: name, location: location });
+    persist(); snapshotCurrentData();
+    showToast(t('added'));
+  } else {
+    var it = findById(state.editingId);
+    if (it){ it.name = name; it.location = location; }
+    persist(); snapshotCurrentData();
+    showToast(t('updated'));
+  }
+  resetForm();
+  render();
+  el.inpName.focus(); // ready for the next product immediately
+}
+function handleDelete(id){
+  var it = findById(id);
+  if (!it) return;
+  askConfirm({
+    title: t('delTitle'),
+    message: t('delConfirm', { name: it.name }),
+    okLabel: t('del'),
+    danger: true
+  }).then(function(yes){
+    if (!yes) return;
+    state.items = state.items.filter(function(r){ return r.id !== id; });
+    if (state.editingId === id) resetForm();
+    persist(); snapshotCurrentData();
+    render();
+    showToast(t('deleted'));
+  });
+}
+
+/* ================= Manual backup: export / import ================= */
+function pad2(n){ return String(n).length < 2 ? '0' + n : String(n); }
+function handleExport(){
+  var payload = {
+    app: 'depotCatalog',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: { version: 1, nextId: state.nextId, items: state.items }
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var d = new Date();
+  a.download = 'depot-catalog-' + d.getFullYear() + pad2(d.getMonth() + 1) +
+               pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.json';
+  a.href = url;
+  document.body.appendChild(a);
+  a.click(); // direct user gesture => works on desktop and mobile
+  a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  showToast(t('exported'));
+}
+function parseBackup(text){
+  var p = null;
+  try { p = JSON.parse(text); } catch(e){ return null; }
+  var arr = null;
+  if (Array.isArray(p)) arr = p;
+  else if (p && Array.isArray(p.data)) arr = p.data;
+  else if (p && p.data && Array.isArray(p.data.items)) arr = p.data.items;
+  else if (p && Array.isArray(p.items)) arr = p.items;
+  if (arr === null) return null;
+  var items = [];
+  for (var i = 0; i < arr.length; i++){
+    var it = arr[i];
+    if (!it || typeof it.name !== 'string') return null;
+    items.push({
+      name: it.name.slice(0, 200),
+      location: (typeof it.location === 'string') ? it.location.slice(0, 200) : ''
+    });
+  }
+  return items;
+}
+
+function handleImportFile(file){
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onerror = function(){ showToast(t('invalidFile')); };
+  reader.onload = function(){
+    var imported = parseBackup(String(reader.result));
+    if (imported === null){ showToast(t('invalidFile')); return; }
+    askConfirm({
+      title: t('impTitle'),
+      message: t('impConfirm', { cur: state.items.length, inc: imported.length }),
+      okLabel: t('impReplace'),
+      danger: true
+    }).then(function(yes){
+      if (!yes) return;
+      state.items = imported.map(function(it){
+        return { id: state.nextId++, name: it.name, location: it.location };
+      });
+      persist(); snapshotCurrentData();
+      render();
+      showToast(t('imported', { n: imported.length }));
+    });
+  };
+  reader.readAsText(file);
+}
+
+/* ================= Event wiring & init ================= */
+function bindEvents(){
+  el.productForm.addEventListener('submit', handleFormSubmit);
+  el.btnCancelEdit.addEventListener('click', function(){ resetForm(); render(); });
+  el.inpName.addEventListener('input', handleNameInput);
+  el.inpName.addEventListener('blur', function(){ setTimeout(hideSuggestions, 120); });
+  el.inpName.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape') hideSuggestions();
+  });
+  el.inpLoc.addEventListener('input', handleLocationInput);
+  document.addEventListener('compositionstart', function(){ composing = true; });
+  document.addEventListener('compositionend', function(){ composing = false; });
+  el.inpSearch.addEventListener('input', function(){
+    state.filter = el.inpSearch.value;
+    renderList();
+    var shown = state.filter.trim() ? getFilteredItems().length : state.items.length;
+    el.itemCount.textContent = t('itemCount', { n: shown });
+  });
+  el.btnLangTr.addEventListener('click', function(){ setLang('tr'); });
+  el.btnLangEn.addEventListener('click', function(){ setLang('en'); });
+  el.btnExport.addEventListener('click', handleExport);
+  el.btnImportTrigger.addEventListener('click', function(){
+    try { el.inpImport.click(); } catch(e){}
+  });
+  el.inpImport.addEventListener('change', function(){
+    if (el.inpImport.files && el.inpImport.files[0]){
+      handleImportFile(el.inpImport.files[0]);
+    }
+    el.inpImport.value = ''; // allow re-selecting the same file later
+  });
+  el.modalOk.addEventListener('click', function(){ closeConfirm(true); });
+  el.modalCancel.addEventListener('click', function(){ closeConfirm(false); });
+  el.overlay.addEventListener('click', function(ev){
+    if (ev.target === el.overlay) closeConfirm(false); // backdrop click cancels
+  });
+  document.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape' && !el.overlay.classList.contains('hidden')){
+      closeConfirm(false);
+    }
+  });
+}
+function setLang(lang){
+  state.lang = lang;
+  try { localStorage.setItem(LS_LANG, lang); } catch(e){}
+  render();
+}
+
+function init(){
+  // Bootstrap check: translations must have loaded from translations.js
+  if (!languagesValid(window.DEPOT_LANGUAGES)){
+    el.appRoot.classList.add('hidden');
+    el.bootstrapError.classList.remove('hidden');
+    return; // app stays inert; message is intentionally hardcoded English
+  }
+  checkStorage();
+  state.lang = detectLang();
+  if (storageOk){
+    var loaded = loadItems();
+    if (loaded.ok && !loaded.empty){
+      state.items = loaded.items;
+      state.nextId = loaded.nextId;
+    } else if (!loaded.ok){
+      setTimeout(function(){ showToast(t('corruptWarn')); }, 400);
+    }
+  } else {
+    el.banner.textContent = t('storageWarn');
+    el.banner.classList.remove('hidden');
+  }
+  bindEvents();
+  render();
+  try { el.inpSearch.focus(); } catch(e){} // start typing a search right away
+}
+init();
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
