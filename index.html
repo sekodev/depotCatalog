@@ -159,15 +159,32 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .suggest-item .sg-name{word-break:break-word}
 .suggest-item .sg-loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}
 
-/* ---------- Edit-mode form highlight ---------- */
-#formCard.editing{border-color:var(--accent);animation:pulseBorder 1s ease-in-out 3}
-@keyframes pulseBorder{
-  0%,100%{box-shadow:0 0 0 0 rgba(77,148,240,0)}
-  50%{box-shadow:0 0 0 4px rgba(77,148,240,.45)}
+/* ---------- Add-form toggle & close ---------- */
+.btn-toggle-add{width:100%;font-size:1rem}
+.form-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;gap:.5rem}
+.form-head h2{margin-bottom:0}
+#btnCloseForm{border:1px solid var(--border)}
+
+/* ---------- Inline row editing ---------- */
+.row.editing{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;
+  background:rgba(77,148,240,.12);box-shadow:inset 3px 0 0 var(--accent)}
+.row.editing .edit-field{flex:1 1 150px;min-width:0}
+.edit-input{
+  width:100%;padding:.4rem .55rem;font-size:1rem;
+  border:1px solid var(--accent);border-radius:6px;
+  background:var(--surface);color:var(--text);font-family:inherit;
 }
-@media (prefers-reduced-motion: reduce){
-  #formCard.editing{animation:none;border-width:2px}
+.edit-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn-sm{min-height:38px;min-width:38px;padding:.3rem .65rem;font-size:.85rem}
+
+/* ---------- Page-size selector ---------- */
+.psize{display:inline-flex;align-items:center;gap:.4rem}
+.psize select{
+  padding:.3rem .5rem;font-size:.9rem;min-height:38px;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;
 }
+
 
 /* ---------- Footer disclaimer ---------- */
 .disclaimer{text-align:center;font-size:.8rem;color:var(--muted)}
@@ -243,9 +260,14 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 
   <div id="banner" class="banner hidden"></div>
 
-  <!-- Add / Edit form -->
-  <section class="card" id="formCard">
-    <h2 id="formTitle" tabindex="-1"></h2>
+  <button type="button" id="btnToggleAdd" class="btn btn-primary btn-toggle-add"></button>
+
+  <!-- Add form (hidden until toggled) -->
+  <section class="card hidden" id="formCard">
+    <div class="form-head">
+      <h2 id="formTitle" tabindex="-1"></h2>
+      <button type="button" id="btnCloseForm" class="icon-btn" aria-label=""></button>
+    </div>
     <form id="productForm" novalidate>
       <div class="field">
         <label for="inpName" id="lblName"></label>
@@ -259,7 +281,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
       </div>
       <div class="form-actions field">
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
-        <button type="button" id="btnCancelEdit" class="btn btn-secondary hidden"></button>
       </div>
     </form>
   </section>
@@ -282,6 +303,15 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   <!-- Toolbar: export / import / count -->
   <div class="toolbar">
     <span id="itemCount" class="count"></span>
+    <span class="psize">
+      <label for="selPageSize" id="lblPageSize" class="count"></label>
+      <select id="selPageSize">
+        <option value="5" selected>5</option>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+      </select>
+    </span>
     <div class="group">
       <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
       <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
@@ -319,7 +349,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 var LS_ITEMS   = 'depotCatalog.items.v1';
 var LS_LANG    = 'depotCatalog.lang';
 var MAX_SNAPS = 5;
-var PAGE_SIZE = 10;
 
 /* ============ i18n (strings live in external translations.js) ============ */
 var LANGUAGES = window.DEPOT_LANGUAGES;
@@ -377,7 +406,8 @@ var state = {
   filter: '',
   editingId: null,
   lang: 'en',
-  page: 1
+  page: 1,
+  pageSize: 5
 };
 var storageOk = true;
 
@@ -385,11 +415,12 @@ var storageOk = true;
 function $(id){ return document.getElementById(id); }
 var el = {};
 ['appTitle','btnLangTr','btnLangEn','banner','formTitle','productForm',
- 'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit','btnCancelEdit',
+ 'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit',
  'inpSearch','colName','colLoc','listBody','itemCount','btnExport','lblExport',
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
- 'appRoot','bootstrapError','pagination','ghLink'
+ 'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
+ 'selPageSize','lblPageSize'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -587,13 +618,16 @@ function applyStaticText(){
   document.documentElement.lang = state.lang;
   document.title = t('docTitle');
   el.appTitle.textContent = t('appTitle');
-  el.formTitle.textContent = (state.editingId !== null) ? t('editTitle') : t('addTitle');
+  el.btnToggleAdd.textContent = t('addTitle');
+  el.formTitle.textContent = t('addTitle');
   el.lblName.textContent = t('nameLbl');
   el.lblLoc.textContent = t('locLbl');
   el.inpName.placeholder = t('phName');
   el.inpLoc.placeholder = t('phLoc');
-  el.btnSubmit.textContent = (state.editingId !== null) ? t('save') : t('add');
-  el.btnCancelEdit.textContent = t('cancel');
+  el.btnSubmit.textContent = t('add');
+  el.btnCloseForm.textContent = '\u2715'; // close X
+  el.btnCloseForm.setAttribute('aria-label', t('close'));
+  el.lblPageSize.textContent = t('pageSizeLbl');
   el.inpSearch.placeholder = t('searchPh');
   el.inpSearch.setAttribute('aria-label', t('searchAria'));
   el.colName.textContent = t('colName');
@@ -605,7 +639,6 @@ function applyStaticText(){
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
   el.ghLink.title = t('githubAria');
-  el.formCard.classList.toggle('editing', state.editingId !== null);
   var trAvail = !!getLang('tr'), enAvail = !!getLang('en');
   el.btnLangTr.classList.toggle('hidden', !trAvail);
   el.btnLangEn.classList.toggle('hidden', !enAvail);
@@ -646,11 +679,15 @@ function renderList(){
     hidePagination();
     return;
   }
-  var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  var totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
   if (state.page > totalPages) state.page = totalPages;   // self-heal after delete
   if (state.page < 1) state.page = 1;
-  var startIdx = (state.page - 1) * PAGE_SIZE;
-  filtered.slice(startIdx, startIdx + PAGE_SIZE).forEach(function(it){
+  var startIdx = (state.page - 1) * state.pageSize;
+  filtered.slice(startIdx, startIdx + state.pageSize).forEach(function(it){
+    if (it.id === state.editingId){
+      body.appendChild(buildEditRow(it));
+      return;
+    }
     var row = document.createElement('div');
     row.className = 'row';
     row.appendChild(makeCell(it.name, 'name'));
@@ -744,12 +781,10 @@ function render(){
 
 /* ================= CRUD ================= */
 function resetForm(){
-  state.editingId = null;
   el.inpName.value = '';
   el.inpLoc.value = '';
   el.nameError.classList.add('hidden');
   hideSuggestions();
-  applyStaticText();
 }
 function findById(id){
   for (var i = 0; i < state.items.length; i++){
@@ -761,17 +796,96 @@ function startEdit(id){
   var it = findById(id);
   if (!it) return;
   state.editingId = id;
-  el.inpName.value = it.name;
-  el.inpLoc.value = it.location;
-  el.nameError.classList.add('hidden');
-  hideSuggestions();
-  applyStaticText(); // also toggles the .editing highlight class on the form card
-  try {
-    el.formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch(e){
-    try { el.formCard.scrollIntoView(); } catch(e2){}
+  renderList();
+  var nameInput = document.querySelector('#listBody .row.editing .edit-name');
+  if (nameInput){
+    nameInput.focus();
+    try { nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length); } catch(e){}
   }
-  try { el.formTitle.focus(); } catch(e3){} // announce section to screen readers
+}
+function cancelInlineEdit(){
+  state.editingId = null;
+  renderList();
+}
+function saveInlineEdit(){
+  var it = findById(state.editingId);
+  var nameInput = document.querySelector('#listBody .row.editing .edit-name');
+  var locInput = document.querySelector('#listBody .row.editing .edit-loc');
+  if (!it || !nameInput || !locInput){ state.editingId = null; renderList(); return; }
+  var name = nameInput.value.trim();
+  if (!name){ nameInput.focus(); return; } // empty name: stay in edit mode
+  it.name = name;
+  it.location = locInput.value.trim();
+  state.editingId = null;
+  persist(); snapshotCurrentData();
+  renderList();
+  showToast(t('updated'));
+}
+function buildEditRow(it){
+  var row = document.createElement('div');
+  row.className = 'row editing';
+
+  var nameWrap = document.createElement('div');
+  nameWrap.className = 'edit-field';
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.maxLength = 120;
+  nameInput.className = 'edit-input edit-name';
+  nameInput.value = it.name;
+  nameInput.setAttribute('aria-label', t('nameLbl'));
+  nameInput.addEventListener('input', function(){ autoCapitalizeFirst(nameInput); });
+  nameInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      locInput.focus();
+    } else if (ev.key === 'Escape'){
+      cancelInlineEdit();
+    }
+  });
+  nameWrap.appendChild(nameInput);
+  row.appendChild(nameWrap);
+
+  var locWrap = document.createElement('div');
+  locWrap.className = 'edit-field';
+  var locInput = document.createElement('input');
+  locInput.type = 'text';
+  locInput.maxLength = 120;
+  locInput.className = 'edit-input edit-loc';
+  locInput.value = it.location;
+  locInput.setAttribute('aria-label', t('locLbl'));
+  locInput.addEventListener('input', function(){ autoCapitalizeFirst(locInput); });
+  locInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      saveInlineEdit();
+    } else if (ev.key === 'Escape'){
+      cancelInlineEdit();
+    }
+  });
+  locWrap.appendChild(locInput);
+  row.appendChild(locWrap);
+
+  var actions = document.createElement('div');
+  actions.className = 'actions';
+
+  var saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn btn-primary btn-sm';
+  saveBtn.textContent = t('save');
+  saveBtn.setAttribute('aria-label', t('save'));
+  saveBtn.addEventListener('click', saveInlineEdit);
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'btn btn-secondary btn-sm';
+  cancelBtn.textContent = t('cancel');
+  cancelBtn.setAttribute('aria-label', t('cancel'));
+  cancelBtn.addEventListener('click', cancelInlineEdit);
+
+  actions.appendChild(saveBtn);
+  actions.appendChild(cancelBtn);
+  row.appendChild(actions);
+  return row;
 }
 async function handleFormSubmit(ev){
   ev.preventDefault();
@@ -830,14 +944,9 @@ async function handleFormSubmit(ev){
     // Show the page that contains the newly added item
     var fl = getFilteredItems();
     for (var k = 0; k < fl.length; k++){
-      if (fl[k].id === newId){ state.page = Math.floor(k / PAGE_SIZE) + 1; break; }
+      if (fl[k].id === newId){ state.page = Math.floor(k / state.pageSize) + 1; break; }
     }
     showToast(t('added'));
-  } else {
-    var it = findById(state.editingId);
-    if (it){ it.name = name; it.location = location; }
-    persist(); snapshotCurrentData();
-    showToast(t('updated'));
   }
   resetForm();
   render();
@@ -932,7 +1041,26 @@ function handleImportFile(file){
 /* ================= Event wiring & init ================= */
 function bindEvents(){
   el.productForm.addEventListener('submit', handleFormSubmit);
-  el.btnCancelEdit.addEventListener('click', function(){ resetForm(); render(); });
+  el.btnToggleAdd.addEventListener('click', function(){
+    el.formCard.classList.remove('hidden');
+    el.btnToggleAdd.classList.add('hidden');
+    resetForm();
+    el.inpName.focus();
+  });
+  el.btnCloseForm.addEventListener('click', function(){
+    el.formCard.classList.add('hidden');
+    el.btnToggleAdd.classList.remove('hidden');
+    resetForm();
+    el.btnToggleAdd.focus();
+  });
+  el.selPageSize.addEventListener('change', function(){
+    var n = parseInt(el.selPageSize.value, 10);
+    if (isNaN(n) || n < 1) return;
+    state.pageSize = n;
+    state.page = 1;       // page size changed => back to first page
+    state.editingId = null; // editing row may not exist on the new page
+    renderList();
+  });
   el.inpName.addEventListener('input', handleNameInput);
   el.inpName.addEventListener('blur', function(){ setTimeout(hideSuggestions, 120); });
   el.inpName.addEventListener('keydown', function(ev){
@@ -950,7 +1078,8 @@ function bindEvents(){
   document.addEventListener('compositionend', function(){ composing = false; });
   el.inpSearch.addEventListener('input', function(){
     state.filter = el.inpSearch.value;
-    state.page = 1; // filter changed => back to first page
+    state.page = 1;         // filter changed => back to first page
+    state.editingId = null; // editing row may be filtered out
     renderList();
     var shown = state.filter.trim() ? getFilteredItems().length : state.items.length;
     el.itemCount.textContent = t('itemCount', { n: shown });
@@ -959,7 +1088,11 @@ function bindEvents(){
     var b = ev.target && ev.target.closest ? ev.target.closest('.page-btn') : null;
     if (!b || b.disabled) return;
     var p = parseInt(b.getAttribute('data-page'), 10);
-    if (!isNaN(p)){ state.page = p; renderList(); }
+    if (!isNaN(p)){
+      state.page = p;
+      state.editingId = null; // editing row is on another page
+      renderList();
+    }
   });
   el.btnLangTr.addEventListener('click', function(){ setLang('tr'); });
   el.btnLangEn.addEventListener('click', function(){ setLang('en'); });
@@ -986,6 +1119,7 @@ function bindEvents(){
 }
 function setLang(lang){
   state.lang = lang;
+  state.editingId = null; // re-render would discard unsaved edits
   try { localStorage.setItem(LS_LANG, lang); } catch(e){}
   render();
 }

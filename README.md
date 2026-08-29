@@ -11,8 +11,9 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 
 ## Features
 
-- **CRUD**: add products (name + location), edit, delete (with confirmation)
+- **CRUD**: add products (name + location) via a toggleable add-form, inline row editing (Enter to jump/save, Escape to cancel), delete (with confirmation)
 - **Live search**: filters by name or location, case-insensitive; search box is focused on page load
+- **Pagination**: selectable page size (5/10/15/20, default 5), numbered pages with previous/next; current page highlighted
 - **Duplicate protection**: while typing a product name in Add mode, matching products are listed under the input; exact duplicates (same name + location) are blocked with an alert; same name at a different location asks for confirmation
 - **Missing location check**: adding without a location asks whether to continue anyway
 - **Smart inputs**: first letters of name/location auto-capitalize; pasted or edited values are left untouched
