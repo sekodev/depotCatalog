@@ -56,6 +56,17 @@ h1{font-size:1.35rem;display:flex;align-items:center;gap:.5rem}
 }
 .lang-switch button[aria-pressed="true"]{background:var(--accent);color:#fff}
 
+/* ---------- Search wrap & clear button ---------- */
+.search-wrap{position:relative;display:flex;align-items:center}
+.search-wrap .search-input{width:100%;padding-right:2.6rem}
+.clear-btn{
+  position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;min-height:0;padding:0;
+  border:none;border-radius:6px;background:none;
+  font-size:1.15rem;line-height:1;color:var(--muted);cursor:pointer;
+}
+.clear-btn:hover{color:var(--text);background:var(--bg)}
+
 /* ---------- Cards & form ---------- */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}
 .card h2{font-size:1rem;margin-bottom:.75rem}
@@ -112,9 +123,12 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .empty-state{padding:2rem 1rem;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.5}
 
 /* ---------- Toolbar ---------- */
-.toolbar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between}
+.toolbar{display:grid;grid-template-columns:auto 1fr auto;gap:.8rem;align-items:center}
+.toolbar .group-export{display:flex;gap:.5rem;flex-wrap:wrap}
+.toolbar .center-row{display:flex;align-items:center;justify-content:center;gap:.8rem;flex-wrap:wrap}
+.center-row .count{text-align:center}
+.toolbar .btn-toggle-add{justify-self:end;white-space:nowrap}
 .count{font-size:.87rem;color:var(--muted)}
-.toolbar .group{display:flex;gap:.5rem;flex-wrap:wrap}
 
 /* ---------- Banner / Modal / Toast ---------- */
 .banner{
@@ -160,7 +174,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .suggest-item .sg-loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}
 
 /* ---------- Add-form toggle & close ---------- */
-.btn-toggle-add{width:100%;font-size:1rem}
 .form-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;gap:.5rem}
 .form-head h2{margin-bottom:0}
 #btnCloseForm{border:1px solid var(--border)}
@@ -218,7 +231,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 /* ---------- Responsive: desktop ---------- */
 @media (min-width:721px){
   form#productForm{grid-template-columns:2fr 1.5fr auto auto;align-items:end}
-  .search-input{max-width:440px}
+  .search-wrap{max-width:440px}
 }
 
 /* ---------- Responsive: mobile ---------- */
@@ -234,10 +247,13 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   .row .name{grid-area:name;font-weight:600}
   .row .loc{grid-area:loc}
   .row .actions{grid-area:actions;flex-direction:column;align-self:center}
-  .toolbar{flex-direction:column-reverse;align-items:stretch}
+  .toolbar{grid-template-columns:1fr;gap:.7rem}
+  .toolbar .group-export{flex-direction:column;align-items:stretch}
+  .toolbar .group-export .btn{width:100%}
+  .toolbar .center-row{flex-direction:column;gap:.4rem}
+  .center-row .count{text-align:center}
+  .toolbar .btn-toggle-add{justify-self:center;width:100%}
   .count{text-align:center}
-  .toolbar .group{flex-direction:column}
-  .toolbar .group .btn{width:100%}
 }
 </style>
 </head>
@@ -260,7 +276,44 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 
   <div id="banner" class="banner hidden"></div>
 
-  <button type="button" id="btnToggleAdd" class="btn btn-primary btn-toggle-add"></button>
+  <!-- Live search -->
+  <div class="search-wrap">
+    <input type="search" id="inpSearch" class="search-input" autocomplete="off">
+    <button type="button" id="btnClearSearch" class="clear-btn hidden" aria-label=""></button>
+  </div>
+
+  <!-- Stock list -->
+  <section class="card list-card">
+    <div class="list-head" aria-hidden="true">
+      <span id="colName"></span>
+      <span id="colLoc"></span>
+      <span></span>
+    </div>
+    <div id="listBody"></div>
+    <nav id="pagination" class="pagination hidden" aria-label=""></nav>
+  </section>
+
+  <!-- Toolbar: export / import / add / count -->
+  <div class="toolbar">
+    <div class="group-export">
+      <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
+      <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
+      <input type="file" id="inpImport" accept=".json,application/json" class="sr-only">
+    </div>
+    <div class="center-row">
+      <span id="itemCount" class="count"></span>
+      <span class="psize">
+        <label for="selPageSize" id="lblPageSize" class="count"></label>
+        <select id="selPageSize">
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+        </select>
+      </span>
+    </div>
+    <button type="button" id="btnToggleAdd" class="btn btn-primary btn-toggle-add"></button>
+  </div>
 
   <!-- Add form (hidden until toggled) -->
   <section class="card hidden" id="formCard">
@@ -284,40 +337,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
       </div>
     </form>
   </section>
-
-  <!-- Live search -->
-  <input type="search" id="inpSearch" class="search-input" autocomplete="off">
-
-
-  <!-- Stock list -->
-  <section class="card list-card">
-    <div class="list-head" aria-hidden="true">
-      <span id="colName"></span>
-      <span id="colLoc"></span>
-      <span></span>
-    </div>
-    <div id="listBody"></div>
-    <nav id="pagination" class="pagination hidden" aria-label=""></nav>
-  </section>
-
-  <!-- Toolbar: export / import / count -->
-  <div class="toolbar">
-    <span id="itemCount" class="count"></span>
-    <span class="psize">
-      <label for="selPageSize" id="lblPageSize" class="count"></label>
-      <select id="selPageSize">
-        <option value="5" selected>5</option>
-        <option value="10">10</option>
-        <option value="15">15</option>
-        <option value="20">20</option>
-      </select>
-    </span>
-    <div class="group">
-      <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
-      <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
-      <input type="file" id="inpImport" accept=".json,application/json" class="sr-only">
-    </div>
-  </div>
 
   <footer class="disclaimer">
     <span id="disclaimerText"></span>
@@ -420,7 +439,7 @@ var el = {};
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
- 'selPageSize','lblPageSize'
+ 'selPageSize','lblPageSize','btnClearSearch'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -618,7 +637,7 @@ function applyStaticText(){
   document.documentElement.lang = state.lang;
   document.title = t('docTitle');
   el.appTitle.textContent = t('appTitle');
-  el.btnToggleAdd.textContent = t('addTitle');
+  el.btnToggleAdd.textContent = t('addNewBtn');
   el.formTitle.textContent = t('addTitle');
   el.lblName.textContent = t('nameLbl');
   el.lblLoc.textContent = t('locLbl');
@@ -628,6 +647,9 @@ function applyStaticText(){
   el.btnCloseForm.textContent = '\u2715'; // close X
   el.btnCloseForm.setAttribute('aria-label', t('close'));
   el.lblPageSize.textContent = t('pageSizeLbl');
+  el.btnClearSearch.textContent = '\u00D7'; // clear X
+  el.btnClearSearch.setAttribute('aria-label', t('clearSearchAria'));
+  el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
   el.inpSearch.placeholder = t('searchPh');
   el.inpSearch.setAttribute('aria-label', t('searchAria'));
   el.colName.textContent = t('colName');
@@ -1080,9 +1102,20 @@ function bindEvents(){
     state.filter = el.inpSearch.value;
     state.page = 1;         // filter changed => back to first page
     state.editingId = null; // editing row may be filtered out
+    el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
     renderList();
     var shown = state.filter.trim() ? getFilteredItems().length : state.items.length;
     el.itemCount.textContent = t('itemCount', { n: shown });
+  });
+  el.btnClearSearch.addEventListener('click', function(){
+    el.inpSearch.value = '';
+    state.filter = '';
+    state.page = 1;
+    state.editingId = null;
+    el.btnClearSearch.classList.add('hidden');
+    renderList();
+    el.itemCount.textContent = t('itemCount', { n: state.items.length });
+    el.inpSearch.focus();
   });
   el.pagination.addEventListener('click', function(ev){
     var b = ev.target && ev.target.closest ? ev.target.closest('.page-btn') : null;
