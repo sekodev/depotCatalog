@@ -171,6 +171,31 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 
 /* ---------- Footer disclaimer ---------- */
 .disclaimer{text-align:center;font-size:.8rem;color:var(--muted)}
+.copyright{display:block;margin-top:.3rem}
+
+/* ---------- GitHub header link ---------- */
+.gh-link{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:8px;color:var(--muted);
+}
+.gh-link:hover{color:var(--text);background:var(--bg)}
+.gh-link svg{width:22px;height:22px;fill:currentColor}
+
+/* ---------- Pagination ---------- */
+.pagination{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:.35rem;padding:.65rem;border-top:1px solid var(--border);
+}
+.page-btn{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  min-width:44px;min-height:44px;padding:0 .7rem;font-size:.9rem;
+  color:var(--text);cursor:pointer;font-family:inherit;
+}
+.page-btn:hover:not([disabled]):not(.active){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.page-btn[disabled]{opacity:.45;cursor:default}
+.page-ellipsis{color:var(--muted);padding:0 .25rem}
+
 
 
 /* ---------- Responsive: desktop ---------- */
@@ -205,9 +230,14 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 
   <header>
     <h1><span aria-hidden="true">📦</span><span id="appTitle"></span></h1>
-    <div class="lang-switch" role="group">
-      <button type="button" id="btnLangTr">TR</button>
-      <button type="button" id="btnLangEn">EN</button>
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <a id="ghLink" class="gh-link" href="https://github.com/sekodev/depotCatalog" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+      <div class="lang-switch" role="group">
+        <button type="button" id="btnLangTr">TR</button>
+        <button type="button" id="btnLangEn">EN</button>
+      </div>
     </div>
   </header>
 
@@ -246,6 +276,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
       <span></span>
     </div>
     <div id="listBody"></div>
+    <nav id="pagination" class="pagination hidden" aria-label=""></nav>
   </section>
 
   <!-- Toolbar: export / import / count -->
@@ -258,7 +289,10 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
     </div>
   </div>
 
-  <footer class="disclaimer"><span id="disclaimerText"></span></footer>
+  <footer class="disclaimer">
+    <span id="disclaimerText"></span>
+    <span class="copyright">2026 sekodev</span>
+  </footer>
 
 </div><!-- /.wrap -->
 
@@ -285,6 +319,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 var LS_ITEMS   = 'depotCatalog.items.v1';
 var LS_LANG    = 'depotCatalog.lang';
 var MAX_SNAPS = 5;
+var PAGE_SIZE = 10;
 
 /* ============ i18n (strings live in external translations.js) ============ */
 var LANGUAGES = window.DEPOT_LANGUAGES;
@@ -341,7 +376,8 @@ var state = {
   nextId: 1,
   filter: '',
   editingId: null,
-  lang: 'en'
+  lang: 'en',
+  page: 1
 };
 var storageOk = true;
 
@@ -353,7 +389,7 @@ var el = {};
  'inpSearch','colName','colLoc','listBody','itemCount','btnExport','lblExport',
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
- 'appRoot','bootstrapError'
+ 'appRoot','bootstrapError','pagination','ghLink'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -567,6 +603,8 @@ function applyStaticText(){
   el.lblImport.textContent = t('upload');
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
+  el.ghLink.setAttribute('aria-label', t('githubAria'));
+  el.ghLink.title = t('githubAria');
   el.formCard.classList.toggle('editing', state.editingId !== null);
   var trAvail = !!getLang('tr'), enAvail = !!getLang('en');
   el.btnLangTr.classList.toggle('hidden', !trAvail);
@@ -596,6 +634,7 @@ function renderList(){
     empty.className = 'empty-state';
     empty.textContent = t('emptyList');
     body.appendChild(empty);
+    hidePagination();
     return;
   }
   var filtered = getFilteredItems();
@@ -604,9 +643,14 @@ function renderList(){
     none.className = 'empty-state';
     none.textContent = t('noResults', { query: state.filter.trim() });
     body.appendChild(none);
+    hidePagination();
     return;
   }
-  filtered.forEach(function(it){
+  var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (state.page > totalPages) state.page = totalPages;   // self-heal after delete
+  if (state.page < 1) state.page = 1;
+  var startIdx = (state.page - 1) * PAGE_SIZE;
+  filtered.slice(startIdx, startIdx + PAGE_SIZE).forEach(function(it){
     var row = document.createElement('div');
     row.className = 'row';
     row.appendChild(makeCell(it.name, 'name'));
@@ -634,6 +678,64 @@ function renderList(){
     row.appendChild(actions);
     body.appendChild(row);
   });
+  renderPagination(totalPages);
+}
+/* ---------- Pagination controls ---------- */
+function hidePagination(){
+  el.pagination.classList.add('hidden');
+  el.pagination.innerHTML = '';
+}
+function renderPagination(totalPages){
+  var nav = el.pagination;
+  nav.innerHTML = '';
+  if (totalPages <= 1){ nav.classList.add('hidden'); return; }
+  nav.classList.remove('hidden');
+  nav.setAttribute('aria-label', t('paginationAria'));
+
+  function mkBtn(label, page, opts){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'page-btn' + (opts && opts.active ? ' active' : '');
+    b.innerHTML = label; // trusted static content (translated labels + &#8249;/&#8250;)
+    if (opts && opts.active){
+      b.setAttribute('aria-current', 'page');
+      b.setAttribute('aria-label', t('pageAria', { n: page }));
+    } else {
+      b.setAttribute('aria-label', t('pageAria', { n: page }));
+    }
+    if (opts && opts.disabled) b.disabled = true;
+    else b.setAttribute('data-page', String(page));
+    return b;
+  }
+  function mkEllipsis(){
+    var s = document.createElement('span');
+    s.className = 'page-ellipsis';
+    s.textContent = '\u2026';
+    return s;
+  }
+
+  var prev = mkBtn('&#8249; ' + t('prevPage'), state.page - 1, { disabled: state.page === 1 });
+  nav.appendChild(prev);
+
+  var numbers = [];
+  if (totalPages <= 7){
+    for (var p = 1; p <= totalPages; p++) numbers.push(p);
+  } else {
+    numbers.push(1);
+    var lo = Math.max(2, state.page - 1);
+    var hi = Math.min(totalPages - 1, state.page + 1);
+    if (lo > 2) numbers.push(0); // 0 => ellipsis
+    for (var q = lo; q <= hi; q++) numbers.push(q);
+    if (hi < totalPages - 1) numbers.push(-1); // -1 => ellipsis
+    numbers.push(totalPages);
+  }
+  numbers.forEach(function(p){
+    if (p === 0 || p === -1){ nav.appendChild(mkEllipsis()); return; }
+    nav.appendChild(mkBtn(String(p), p, { active: p === state.page }));
+  });
+
+  var next = mkBtn(t('nextPage') + ' &#8250;', state.page + 1, { disabled: state.page === totalPages });
+  nav.appendChild(next);
 }
 function render(){
   applyStaticText();
@@ -722,8 +824,14 @@ async function handleFormSubmit(ev){
       });
       if (!go2){ el.inpLoc.focus(); return; }
     }
-    state.items.push({ id: state.nextId++, name: name, location: location });
+    var newId = state.nextId++;
+    state.items.push({ id: newId, name: name, location: location });
     persist(); snapshotCurrentData();
+    // Show the page that contains the newly added item
+    var fl = getFilteredItems();
+    for (var k = 0; k < fl.length; k++){
+      if (fl[k].id === newId){ state.page = Math.floor(k / PAGE_SIZE) + 1; break; }
+    }
     showToast(t('added'));
   } else {
     var it = findById(state.editingId);
@@ -828,6 +936,13 @@ function bindEvents(){
   el.inpName.addEventListener('input', handleNameInput);
   el.inpName.addEventListener('blur', function(){ setTimeout(hideSuggestions, 120); });
   el.inpName.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      // Enter in the name field navigates to Location instead of submitting
+      ev.preventDefault();
+      hideSuggestions();
+      el.inpLoc.focus();
+      return;
+    }
     if (ev.key === 'Escape') hideSuggestions();
   });
   el.inpLoc.addEventListener('input', handleLocationInput);
@@ -835,9 +950,16 @@ function bindEvents(){
   document.addEventListener('compositionend', function(){ composing = false; });
   el.inpSearch.addEventListener('input', function(){
     state.filter = el.inpSearch.value;
+    state.page = 1; // filter changed => back to first page
     renderList();
     var shown = state.filter.trim() ? getFilteredItems().length : state.items.length;
     el.itemCount.textContent = t('itemCount', { n: shown });
+  });
+  el.pagination.addEventListener('click', function(ev){
+    var b = ev.target && ev.target.closest ? ev.target.closest('.page-btn') : null;
+    if (!b || b.disabled) return;
+    var p = parseInt(b.getAttribute('data-page'), 10);
+    if (!isNaN(p)){ state.page = p; renderList(); }
   });
   el.btnLangTr.addEventListener('click', function(){ setLang('tr'); });
   el.btnLangEn.addEventListener('click', function(){ setLang('en'); });

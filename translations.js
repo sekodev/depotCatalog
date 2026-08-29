@@ -86,7 +86,12 @@ window.DEPOT_LANGUAGES = [
       contAnyway: "Continue anyway",
       ok: "OK",
       disclaimer: "All data is stored locally on your device.",
-      suggestAria: "Matching products"
+      suggestAria: "Matching products",
+      prevPage: "Previous",
+      nextPage: "Next",
+      paginationAria: "Stock list pages",
+      pageAria: "Go to page {n}",
+      githubAria: "View on GitHub"
     }
   },
 
@@ -142,7 +147,12 @@ window.DEPOT_LANGUAGES = [
       contAnyway: "Yine de devam et",
       ok: "Tamam",
       disclaimer: "Tüm veriler cihazınızda yerel olarak saklanır.",
-      suggestAria: "Eşleşen ürünler"
+      suggestAria: "Eşleşen ürünler",
+      prevPage: "Önceki",
+      nextPage: "Sonraki",
+      paginationAria: "Stok listesi sayfaları",
+      pageAria: "Sayfaya git: {n}",
+      githubAria: "GitHub'da görüntüle"
     }
   }
 
