@@ -132,6 +132,16 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .toolbar .btn-toggle-add.invisible{visibility:hidden;pointer-events:none}
 .count{font-size:.87rem;color:var(--muted)}
 
+/* ---------- Import report & modal list ---------- */
+.import-report .form-head{margin-bottom:.5rem}
+.modal-list{
+  list-style:none;margin:0 0 .25rem;padding:0;
+  max-height:180px;overflow-y:auto;
+  font-size:.85rem;color:var(--muted);
+}
+.modal-list li{padding:.25rem 0;border-bottom:1px solid var(--border);word-break:break-word}
+.modal-list li:last-child{border-bottom:none}
+
 /* ---------- Banner / Modal / Toast ---------- */
 .banner{
   background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);
@@ -147,7 +157,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   box-shadow:0 12px 32px rgba(0,0,0,.28);
 }
 .modal h2{font-size:1.05rem;margin-bottom:.5rem}
-.modal p{font-size:.95rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5}
+.modal p{font-size:.95rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5;white-space:pre-line}
 .modal-actions{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap}
 .toast{
   position:fixed;left:50%;transform:translateX(-50%);
@@ -300,7 +310,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
     <div class="group-export">
       <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
       <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
-      <input type="file" id="inpImport" accept=".json,application/json" class="sr-only">
+      <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
     </div>
     <div class="center-row">
       <span id="itemCount" class="count"></span>
@@ -316,6 +326,17 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
     </div>
     <button type="button" id="btnToggleAdd" class="btn btn-primary btn-toggle-add"></button>
   </div>
+
+  <!-- Import skipped-rows report (dismissible) -->
+  <section id="importReport" class="card import-report hidden">
+    <div class="form-head">
+      <strong id="impReportTitle"></strong>
+      <button type="button" id="btnReportClose" class="icon-btn" aria-label=""></button>
+    </div>
+    <p id="impReportSummary" class="count"></p>
+    <p id="impReportListTitle" class="count"></p>
+    <ul id="impReportList" class="modal-list"></ul>
+  </section>
 
   <!-- Add form (hidden until toggled) -->
   <section class="card hidden" id="formCard">
@@ -352,6 +373,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText">
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
+    <ul id="modalList" class="modal-list hidden"></ul>
     <div class="modal-actions">
       <button type="button" id="modalCancel" class="btn btn-secondary"></button>
       <button type="button" id="modalOk" class="btn btn-danger"></button>
@@ -441,7 +463,8 @@ var el = {};
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
- 'selPageSize','lblPageSize','btnClearSearch'
+ 'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
+ 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -552,6 +575,17 @@ function askConfirm(opts){
   lastFocused = document.activeElement;
   el.modalTitle.textContent = opts.title;
   el.modalText.textContent = opts.message;
+  el.modalList.innerHTML = '';
+  if (opts.list && opts.list.length){
+    opts.list.forEach(function(line){
+      var li = document.createElement('li');
+      li.textContent = line; // textContent => XSS-safe
+      el.modalList.appendChild(li);
+    });
+    el.modalList.classList.remove('hidden');
+  } else {
+    el.modalList.classList.add('hidden');
+  }
   el.modalOk.textContent = opts.okLabel;
   el.modalCancel.textContent = t('cancel');
   el.modalCancel.classList.toggle('hidden', !!opts.alertOnly);
@@ -652,6 +686,10 @@ function applyStaticText(){
   el.btnClearSearch.textContent = '\u00D7'; // clear X
   el.btnClearSearch.setAttribute('aria-label', t('clearSearchAria'));
   el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
+  el.impReportTitle.textContent = t('impReportTitle');
+  el.impReportListTitle.textContent = t('skippedListTitle');
+  el.btnReportClose.textContent = '\u2715';
+  el.btnReportClose.setAttribute('aria-label', t('close'));
   el.inpSearch.placeholder = t('searchPh');
   el.inpSearch.setAttribute('aria-label', t('searchAria'));
   el.colName.textContent = t('colName');
@@ -994,21 +1032,24 @@ function handleDelete(id){
   });
 }
 
-/* ================= Manual backup: export / import ================= */
-function pad2(n){ return String(n).length < 2 ? '0' + n : String(n); }
+/* ================= Manual backup: CSV export / import ================= */
+function csvEscape(value){
+  var v = String(value);
+  if (/[",\r\n]/.test(v)){
+    return '"' + v.replace(/"/g, '""') + '"';
+  }
+  return v;
+}
 function handleExport(){
-  var payload = {
-    app: 'depotCatalog',
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    data: { version: 1, nextId: state.nextId, items: state.items }
-  };
-  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var lines = ['Name,Location'];
+  for (var i = 0; i < state.items.length; i++){
+    lines.push(csvEscape(state.items[i].name) + ',' + csvEscape(state.items[i].location));
+  }
+  // BOM so spreadsheet apps detect UTF-8 correctly
+  var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  var d = new Date();
-  a.download = 'depot-catalog-' + d.getFullYear() + pad2(d.getMonth() + 1) +
-               pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.json';
+  a.download = 'depot-catalog-export.csv';
   a.href = url;
   document.body.appendChild(a);
   a.click(); // direct user gesture => works on desktop and mobile
@@ -1016,50 +1057,141 @@ function handleExport(){
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
   showToast(t('exported'));
 }
-function parseBackup(text){
-  var p = null;
-  try { p = JSON.parse(text); } catch(e){ return null; }
-  var arr = null;
-  if (Array.isArray(p)) arr = p;
-  else if (p && Array.isArray(p.data)) arr = p.data;
-  else if (p && p.data && Array.isArray(p.data.items)) arr = p.data.items;
-  else if (p && Array.isArray(p.items)) arr = p.items;
-  if (arr === null) return null;
-  var items = [];
-  for (var i = 0; i < arr.length; i++){
-    var it = arr[i];
-    if (!it || typeof it.name !== 'string') return null;
-    items.push({
-      name: it.name.slice(0, 200),
-      location: (typeof it.location === 'string') ? it.location.slice(0, 200) : ''
-    });
+/* RFC-4180-style CSV parser: quoted fields, escaped quotes, CRLF/LF */
+function parseCsvRows(text){
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip BOM
+  var rows = [], row = [], field = '', inQuotes = false;
+  for (var i = 0; i < text.length; i++){
+    var c = text.charAt(i);
+    if (inQuotes){
+      if (c === '"'){
+        if (text.charAt(i + 1) === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"'){
+      inQuotes = true;
+    } else if (c === ','){
+      row.push(field); field = '';
+    } else if (c === '\n'){
+      row.push(field); rows.push(row); row = []; field = '';
+    } else if (c === '\r'){
+      if (text.charAt(i + 1) === '\n') i++;
+      row.push(field); rows.push(row); row = []; field = '';
+    } else {
+      field += c;
+    }
   }
-  return items;
+  if (field !== '' || row.length > 0){ row.push(field); rows.push(row); }
+  return rows;
 }
-
+function analyzeCsvImport(text){
+  var rows = parseCsvRows(text);
+  if (rows.length === 0) return { error: true };
+  var header = rows[0].map(function(s){ return s.trim().toLowerCase(); });
+  var nameIdx = header.indexOf('name');
+  var locIdx = header.indexOf('location');
+  if (nameIdx === -1 || locIdx === -1) return { error: true };
+  var valid = [], dup = [], missing = [];
+  var seen = {};
+  for (var r = 1; r < rows.length; r++){
+    var cells = rows[r];
+    if (cells.length === 1 && cells[0].trim() === '') continue; // blank line
+    var rowNum = r + 1; // 1-based, header is row 1
+    var name = (nameIdx < cells.length) ? cells[nameIdx].trim().slice(0, 200) : '';
+    var location = (locIdx < cells.length) ? cells[locIdx].trim().slice(0, 200) : '';
+    if (!name && !location){
+      missing.push({ row: rowNum, name: '', location: '', reason: 'both' });
+      continue;
+    }
+    if (!name){
+      missing.push({ row: rowNum, name: '', location: location, reason: 'name' });
+      continue;
+    }
+    if (!location){
+      missing.push({ row: rowNum, name: name, location: '', reason: 'loc' });
+      continue;
+    }
+    var key = name.toLowerCase() + '||' + location.toLowerCase();
+    if (seen[key]){
+      dup.push({ row: rowNum, name: name, location: location });
+      continue;
+    }
+    seen[key] = true;
+    valid.push({ name: name, location: location });
+  }
+  return { valid: valid, dup: dup, missing: missing };
+}
+function skippedLine(item, reasonKey){
+  return t('skippedRow', { n: item.row }) + ': \u201C' + item.name + '\u201D @ \u201C' +
+         item.location + '\u201D \u2014 ' + t(reasonKey);
+}
 function handleImportFile(file){
   if (!file) return;
   var reader = new FileReader();
   reader.onerror = function(){ showToast(t('invalidFile')); };
   reader.onload = function(){
-    var imported = parseBackup(String(reader.result));
-    if (imported === null){ showToast(t('invalidFile')); return; }
+    var result = analyzeCsvImport(String(reader.result));
+    if (result.error){ showToast(t('csvBadHeader')); return; }
+    var skippedCount = result.dup.length + result.missing.length;
+    var listItems = [];
+    result.dup.forEach(function(d){
+      listItems.push(skippedLine(d, 'reasonDup'));
+    });
+    result.missing.forEach(function(m){
+      listItems.push(skippedLine(m, m.reason === 'both' ? 'reasonNoBoth' :
+                                     (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc')));
+    });
     askConfirm({
-      title: t('impTitle'),
-      message: t('impConfirm', { cur: state.items.length, inc: imported.length }),
-      okLabel: t('impReplace'),
-      danger: true
+      title: t('impSumTitle'),
+      message: t('impSumValid', { n: result.valid.length }) + '\n' +
+               t('impSumDup', { n: result.dup.length }) + '\n' +
+               t('impSumMissing', { n: result.missing.length }),
+      list: listItems,
+      okLabel: t('upload'),
+      danger: false
     }).then(function(yes){
       if (!yes) return;
-      state.items = imported.map(function(it){
-        return { id: state.nextId++, name: it.name, location: it.location };
+      state.items = result.valid.map(function(v){
+        return { id: state.nextId++, name: v.name, location: v.location };
       });
+      state.page = 1;
+      state.editingId = null;
       persist(); snapshotCurrentData();
+      hideImportReport();
       render();
-      showToast(t('imported', { n: imported.length }));
+      if (skippedCount > 0){
+        showImportReport(result.dup, result.missing);
+      } else {
+        showToast(t('imported', { n: result.valid.length }));
+      }
     });
   };
   reader.readAsText(file);
+}
+function hideImportReport(){
+  el.importReport.classList.add('hidden');
+}
+function showImportReport(dup, missing){
+  el.impReportTitle.textContent = t('impReportTitle');
+  el.impReportSummary.textContent =
+    t('impSumDup', { n: dup.length }) + '\n' +
+    t('impSumMissing', { n: missing.length });
+  el.impReportListTitle.textContent = t('skippedListTitle');
+  el.impReportList.innerHTML = '';
+  dup.forEach(function(d){
+    var li = document.createElement('li');
+    li.textContent = skippedLine(d, 'reasonDup');
+    el.impReportList.appendChild(li);
+  });
+  missing.forEach(function(m){
+    var li = document.createElement('li');
+    li.textContent = skippedLine(m, m.reason === 'both' ? 'reasonNoBoth' :
+                                   (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc'));
+    el.impReportList.appendChild(li);
+  });
+  el.importReport.classList.remove('hidden');
 }
 
 /* ================= Event wiring & init ================= */
@@ -1119,6 +1251,7 @@ function bindEvents(){
     el.itemCount.textContent = t('itemCount', { n: state.items.length });
     el.inpSearch.focus();
   });
+  el.btnReportClose.addEventListener('click', hideImportReport);
   el.pagination.addEventListener('click', function(ev){
     var b = ev.target && ev.target.closest ? ev.target.closest('.page-btn') : null;
     if (!b || b.disabled) return;

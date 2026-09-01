@@ -19,7 +19,7 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 - **Smart inputs**: first letters of name/location auto-capitalize; pasted or edited values are left untouched
 - **Edit mode**: the form pulses/scrolls into view so you can see where you're editing
 - **Persistence**: `localStorage`; automatic rolling snapshots (last 5) saved silently after every change
-- **Backup**: "Download backup" exports JSON; "Load backup" imports it after confirmation
+- **Backup**: "Export" saves the catalog as a CSV file (`depot-catalog-export.csv`, `Name,Location` columns); "Import" loads a CSV after showing a summary with duplicate and missing-field rows that will be skipped
 - **i18n**: Turkish (default) and English, auto-detected from browser language with TR/EN switcher
 - **Privacy**: all prompts are custom in-app modals; footer shows "All data is stored locally on your device."
 - **Responsive**: desktop and mobile; dark mode follows OS setting
