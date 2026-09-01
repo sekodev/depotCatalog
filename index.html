@@ -137,7 +137,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   margin-top:1rem;padding-top:.9rem;border-top:1px dashed var(--border);
   display:flex;flex-direction:column;gap:.5rem;align-items:flex-start;
 }
-.import-title{font-size:.9rem;font-weight:600;color:var(--muted);margin:0}
 
 /* ---------- Import report & modal list ---------- */
 .import-report .form-head{margin-bottom:.5rem}
@@ -367,7 +366,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
       </div>
     </form>
     <div class="import-area">
-      <p id="importAreaTitle" class="import-title"></p>
       <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
       <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
     </div>
@@ -476,8 +474,7 @@ var el = {};
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
- 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose',
- 'importAreaTitle'
+ 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -710,7 +707,6 @@ function applyStaticText(){
   el.itemCount.textContent = t('itemCount', { n: state.items.length });
   el.lblExport.textContent = t('download');
   el.lblImport.textContent = t('upload');
-  el.importAreaTitle.textContent = t('upload');
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
