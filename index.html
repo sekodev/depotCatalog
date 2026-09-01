@@ -132,6 +132,13 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .toolbar .btn-toggle-add.invisible{visibility:hidden;pointer-events:none}
 .count{font-size:.87rem;color:var(--muted)}
 
+/* ---------- Import area inside add form ---------- */
+.import-area{
+  margin-top:1rem;padding-top:.9rem;border-top:1px dashed var(--border);
+  display:flex;flex-direction:column;gap:.5rem;align-items:flex-start;
+}
+.import-title{font-size:.9rem;font-weight:600;color:var(--muted);margin:0}
+
 /* ---------- Import report & modal list ---------- */
 .import-report .form-head{margin-bottom:.5rem}
 .modal-list{
@@ -266,6 +273,8 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   .center-row .count{text-align:center}
   .toolbar .btn-toggle-add{justify-self:center;width:100%}
   .count{text-align:center}
+  .import-area{width:100%;align-items:stretch}
+  .import-area .btn{width:100%}
 }
 </style>
 </head>
@@ -309,8 +318,6 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   <div class="toolbar">
     <div class="group-export">
       <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
-      <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
-      <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
     </div>
     <div class="center-row">
       <span id="itemCount" class="count"></span>
@@ -359,6 +366,11 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
       </div>
     </form>
+    <div class="import-area">
+      <p id="importAreaTitle" class="import-title"></p>
+      <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
+      <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
+    </div>
   </section>
 
   <footer class="disclaimer">
@@ -464,7 +476,8 @@ var el = {};
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
- 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose'
+ 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose',
+ 'importAreaTitle'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -697,6 +710,7 @@ function applyStaticText(){
   el.itemCount.textContent = t('itemCount', { n: state.items.length });
   el.lblExport.textContent = t('download');
   el.lblImport.textContent = t('upload');
+  el.importAreaTitle.textContent = t('upload');
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1033,6 +1047,7 @@ function handleDelete(id){
 }
 
 /* ================= Manual backup: CSV export / import ================= */
+function pad2(n){ return String(n).length < 2 ? '0' + n : String(n); }
 function csvEscape(value){
   var v = String(value);
   if (/[",\r\n]/.test(v)){
@@ -1049,7 +1064,10 @@ function handleExport(){
   var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  a.download = 'depot-catalog-export.csv';
+  var d = new Date(); // local time
+  a.download = 'depotCatalog_D' + pad2(d.getDate()) + pad2(d.getMonth() + 1) +
+               String(d.getFullYear()).slice(-2) +
+               '_T' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.csv';
   a.href = url;
   document.body.appendChild(a);
   a.click(); // direct user gesture => works on desktop and mobile
@@ -1093,6 +1111,11 @@ function analyzeCsvImport(text){
   var nameIdx = header.indexOf('name');
   var locIdx = header.indexOf('location');
   if (nameIdx === -1 || locIdx === -1) return { error: true };
+  // keys of existing items: imported rows matching these are duplicates too
+  var existingKeys = {};
+  for (var e = 0; e < state.items.length; e++){
+    existingKeys[state.items[e].name.toLowerCase() + '||' + state.items[e].location.toLowerCase()] = true;
+  }
   var valid = [], dup = [], missing = [];
   var seen = {};
   for (var r = 1; r < rows.length; r++){
@@ -1114,7 +1137,7 @@ function analyzeCsvImport(text){
       continue;
     }
     var key = name.toLowerCase() + '||' + location.toLowerCase();
-    if (seen[key]){
+    if (seen[key] || existingKeys[key]){
       dup.push({ row: rowNum, name: name, location: location });
       continue;
     }
@@ -1149,16 +1172,26 @@ function handleImportFile(file){
                t('impSumDup', { n: result.dup.length }) + '\n' +
                t('impSumMissing', { n: result.missing.length }),
       list: listItems,
-      okLabel: t('upload'),
+      okLabel: t('impApplyBtn'),
       danger: false
     }).then(function(yes){
       if (!yes) return;
-      state.items = result.valid.map(function(v){
-        return { id: state.nextId++, name: v.name, location: v.location };
+      // APPEND: keep existing items, add the valid rows with new IDs
+      var firstNewId = null;
+      result.valid.forEach(function(v){
+        var id = state.nextId++;
+        if (firstNewId === null) firstNewId = id;
+        state.items.push({ id: id, name: v.name, location: v.location });
       });
-      state.page = 1;
       state.editingId = null;
       persist(); snapshotCurrentData();
+      // Show the page that contains the first newly added item
+      if (firstNewId !== null){
+        var fl = getFilteredItems();
+        for (var k = 0; k < fl.length; k++){
+          if (fl[k].id === firstNewId){ state.page = Math.floor(k / state.pageSize) + 1; break; }
+        }
+      }
       hideImportReport();
       render();
       if (skippedCount > 0){
