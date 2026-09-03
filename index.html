@@ -7,6 +7,19 @@
 <title>Depot Catalog</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
+<script>
+/* Apply the saved (or system) theme before first paint to avoid a flash */
+(function(){
+  try {
+    var t = null;
+    try { t = localStorage.getItem('depotCatalog.theme'); } catch(e){}
+    if (t !== 'dark' && t !== 'light'){
+      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  } catch(e){}
+})();
+</script>
 <style>
 /* ---------- Reset & theme tokens ---------- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -23,8 +36,20 @@
   --radius:10px;
   --shadow:0 1px 3px rgba(16,24,40,.08);
 }
+:root[data-theme="dark"]{
+  --bg:#12161c;
+  --surface:#1b222b;
+  --text:#e8edf3;
+  --muted:#9aa8b6;
+  --border:#2c3642;
+  --accent:#4d94f0;
+  --accent-hover:#6ba7f4;
+  --danger:#e05a4e;
+  --danger-bg:#3a2320;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+}
 @media (prefers-color-scheme: dark){
-  :root{
+  :root:not([data-theme="light"]){
     --bg:#12161c;
     --surface:#1b222b;
     --text:#e8edf3;
@@ -235,6 +260,31 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .gh-link:hover{color:var(--text);background:var(--bg)}
 .gh-link svg{width:22px;height:22px;fill:currentColor}
 
+/* ---------- Theme switch ---------- */
+.theme-switch{
+  position:relative;width:48px;height:26px;border-radius:999px;
+  border:1px solid var(--border);background:var(--bg);cursor:pointer;
+  transition:background .2s ease;flex:none;
+}
+.theme-switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;
+  border-radius:50%;background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s ease;
+}
+.theme-switch[aria-checked="true"]{background:var(--accent)}
+.theme-switch[aria-checked="true"]::after{left:24px;background:#fff}
+.theme-switch:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.theme-switch .sw-icon{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-size:.72rem;line-height:1;pointer-events:none;
+}
+/* Only the icon for the ACTIVE theme is visible:
+   light -> sun (right, opposite the knob), dark -> moon (left) */
+.theme-switch .sw-sun{right:6px}
+.theme-switch .sw-moon{left:6px;display:none}
+.theme-switch[aria-checked="true"] .sw-sun{display:none}
+.theme-switch[aria-checked="true"] .sw-moon{display:block}
+
 /* ---------- Pagination ---------- */
 .pagination{
   display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
@@ -293,6 +343,10 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
       <a id="ghLink" class="gh-link" href="https://github.com/sekodev/depotCatalog" target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
       </a>
+      <button type="button" id="btnTheme" class="theme-switch" role="switch" aria-checked="false" aria-label="">
+        <span class="sw-icon sw-sun" aria-hidden="true">☀️</span>
+        <span class="sw-icon sw-moon" aria-hidden="true">🌙</span>
+      </button>
       <div class="lang-switch" role="group">
         <button type="button" id="btnLangTr">TR</button>
         <button type="button" id="btnLangEn">EN</button>
@@ -407,6 +461,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 /* ================= Constants ================= */
 var LS_ITEMS   = 'depotCatalog.items.v1';
 var LS_LANG    = 'depotCatalog.lang';
+var LS_THEME   = 'depotCatalog.theme';
 var MAX_SNAPS = 5;
 
 /* ============ i18n (strings live in external translations.js) ============ */
@@ -480,7 +535,8 @@ var el = {};
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
- 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose'
+ 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose',
+ 'btnTheme'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -720,6 +776,7 @@ function applyStaticText(){
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
   el.ghLink.title = t('githubAria');
+  syncThemeToggle();
   var trAvail = !!getLang('tr'), enAvail = !!getLang('en');
   el.btnLangTr.classList.toggle('hidden', !trAvail);
   el.btnLangEn.classList.toggle('hidden', !enAvail);
@@ -1234,6 +1291,28 @@ function showImportReport(dup, missing){
   el.importReport.classList.remove('hidden');
 }
 
+/* ================= Theme (dark/light) ================= */
+function currentTheme(){
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+function syncThemeToggle(){
+  if (!el.btnTheme) return;
+  var dark = currentTheme() === 'dark';
+  el.btnTheme.setAttribute('aria-checked', String(dark));
+  var label = t(dark ? 'switchToLight' : 'switchToDark');
+  el.btnTheme.setAttribute('aria-label', label);
+  el.btnTheme.title = label;
+}
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  syncThemeToggle();
+}
+function toggleTheme(){
+  var next = currentTheme() === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { localStorage.setItem(LS_THEME, next); } catch(e){}
+}
+
 /* ================= Event wiring & init ================= */
 function bindEvents(){
   el.productForm.addEventListener('submit', handleFormSubmit);
@@ -1292,6 +1371,10 @@ function bindEvents(){
     el.inpSearch.focus();
   });
   el.btnReportClose.addEventListener('click', hideImportReport);
+  el.btnTheme.addEventListener('click', function(){
+    toggleTheme();
+    applyStaticText(); // refresh aria-checked + labels
+  });
   el.pagination.addEventListener('click', function(ev){
     var b = ev.target && ev.target.closest ? ev.target.closest('.page-btn') : null;
     if (!b || b.disabled) return;
@@ -1354,6 +1437,7 @@ function init(){
     el.banner.classList.remove('hidden');
   }
   bindEvents();
+  applyTheme(currentTheme()); // sync switch state with the active theme
   render();
   try { el.inpSearch.focus(); } catch(e){} // start typing a search right away
 }
