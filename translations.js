@@ -1,5 +1,5 @@
 /* ============================================================
-   depotCatalog - translations.js
+   Depot Catalog - translations.js
    ------------------------------------------------------------
    This file contains ALL user-facing texts of the application.
    Non-technical users can edit or extend it:
@@ -10,15 +10,15 @@
 
         { code: "en", label: "English", strings: { ... } }
 
-      - code  : short language code shown/used internally ("tr", "en", "de", ...)
-      - label : language name displayed in the switcher area
+      - code  : short language code used internally ("tr", "en", ...)
+      - label : language name displayed in the UI
       - strings: the translated texts
 
    2. To add a language, copy an existing block, paste it below,
       change code/label and translate every value on the right side.
       Keep the quotes and commas exactly as they are.
 
-   3. Words in curly braces such as {name}, {cur}, {inc}, {query}, {n}
+   3. Words in curly braces such as {name}, {cur}, {n}, {query}
       are filled in by the app automatically - do NOT translate or
       remove the braces themselves.
 
@@ -32,7 +32,6 @@
    ============================================================ */
 
 window.DEPOT_LANGUAGES = [
-
 
   /* ------------------ ENGLISH ------------------ */
   {
@@ -50,54 +49,52 @@ window.DEPOT_LANGUAGES = [
       add: "Add",
       save: "Save",
       cancel: "Cancel",
-      searchPh: "Search by product name or location\u2026",
+      searchPh: "Search by product name or location…",
       colName: "Product",
       colLoc: "Location",
-      emptyList: "No entries yet. Click \u201CAdd/Import Product\u201D to add your first entry or import a CSV file.",
-      noResults: "No results for \u201C{query}\u201D.",
+      emptyList: "No entries yet. Click “Add/Import Product” to add your first entry or import a CSV file.",
+      noResults: "No results for “{query}”.",
       itemCount: "{n} item(s)",
       addNewBtn: "Add/Import Product",
       clearSearchAria: "Clear search",
-      impApplyBtn: "Import",
       download: "Export to CSV",
       upload: "Import from CSV",
-      delTitle: "Confirm Deletion",
-      delConfirm: "Delete \u201C{name}\u201D? This cannot be undone.",
+      delTitle: "🗑️ Delete Product",
+      delConfirm: "Delete “{name}”? This cannot be undone.",
       del: "Delete",
-      impTitle: "Import Backup",
-      impConfirm: "Your current {cur} record(s) will be replaced by {inc} record(s) from the backup file. Continue?",
-      impReplace: "Replace",
+      impTitle: "Import from CSV",
+      impApplyBtn: "Import",
       editAria: "Edit: {name}",
       delAria: "Delete: {name}",
       searchAria: "Search products",
       langAria: "Language selection",
-      nameReq: "Product name is required.",
-      added: "Product added.",
-      updated: "Product updated.",
-      deleted: "Product deleted.",
-      imported: "Imported: {n} new record(s) added.",
-      exported: "Backup file is being downloaded\u2026",
-      csvBadHeader: "CSV header row must contain \u201CName\u201D and \u201CLocation\u201D columns.",
-      impSumTitle: "Import summary",
-      impSumValid: "Rows to import: {n}",
-      impSumDup: "Duplicate rows skipped: {n}",
-      impSumMissing: "Rows with missing fields skipped: {n}",
+      nameReq: "❌ Product name is required.",
+      added: "✅ Product added.",
+      updated: "✅ Product updated.",
+      deleted: "✅ Product deleted.",
+      imported: "✅ Imported: {n} new record(s) added.",
+      exported: "✅ Export file downloaded.",
+      csvBadHeader: "❌ CSV header row must contain “Name” and “Location” columns.",
+      impSumTitle: "📋 Import summary",
+      impSumValid: "✅ Rows to import: {n}",
+      impSumDup: "⚠️ Duplicate rows skipped: {n}",
+      impSumMissing: "❌ Rows with missing fields skipped: {n}",
       skippedListTitle: "Skipped rows:",
       skippedRow: "Row {n}",
       reasonDup: "duplicate",
       reasonNoName: "missing name",
       reasonNoLoc: "missing location",
       reasonNoBoth: "missing both",
-      impReportTitle: "Import finished \u2013 some rows were skipped",
-      invalidFile: "The file could not be read or is not a valid backup file.",
-      storageWarn: "Warning: Browser storage is unavailable. Your data will only be kept for this session and lost when the page closes.",
-      corruptWarn: "Saved data could not be read; starting with an empty list.",
-      locMissingTitle: "Location Missing",
-      locMissingMsg: "No location was entered for \u201C{name}\u201D. Continue without a location?",
-      dupExactTitle: "Product Already Exists",
-      dupExactMsg: "\u201C{name}\u201D is already registered at location \u201C{location}\u201D. The same product cannot be added twice.",
-      dupWarnTitle: "Same Product, Different Location",
-      dupWarnMsg: "\u201C{name}\u201D already exists at another location. Add this new record anyway?",
+      impReportTitle: "ℹ️ Import finished – some rows were skipped",
+      invalidFile: "❌ The file could not be read or is not a valid CSV file.",
+      storageWarn: "⚠️ Browser storage is unavailable. Your data will only be kept for this session and lost when the page closes.",
+      corruptWarn: "⚠️ Saved data could not be read; starting with an empty list.",
+      locMissingTitle: "⚠️ Location Missing",
+      locMissingMsg: "No location was entered for “{name}”. Continue without a location?",
+      dupExactTitle: "⚠️ Product Already Exists",
+      dupExactMsg: "This product already exists at this location.",
+      dupWarnTitle: "⚠️ Same Product, Different Location",
+      dupWarnMsg: "A product with this name already exists at another location. Do you want to add it anyway?",
       contAnyway: "Continue anyway",
       ok: "OK",
       disclaimer: "All data is stored locally on your device. To use your catalog on another device, export a backup and import it there.",
@@ -111,7 +108,6 @@ window.DEPOT_LANGUAGES = [
       githubAria: "View on GitHub"
     }
   },
-
   /* ------------------ TÜRKÇE ------------------ */
   {
     code: "tr",
@@ -128,54 +124,52 @@ window.DEPOT_LANGUAGES = [
       add: "Ekle",
       save: "Kaydet",
       cancel: "İptal",
-      searchPh: "Ürün adı veya konuma göre ara\u2026",
+      searchPh: "Ürün adı veya konuma göre ara…",
       colName: "Ürün",
       colLoc: "Konum",
-      emptyList: "Henüz kayıt yok. “Ürün Ekle/İçe Aktar” ile ilk kaydınızı ekleyin veya CSV dosyası içe aktarın.",
-      noResults: "\u201C{query}\u201D için sonuç bulunamadı.",
+      emptyList: "Henüz kayıt yok. “Ürün Ekle/İçe Aktar” ile ilk kaydınızı ekleyin veya “CSV'den İçe Aktar” ile bir CSV dosyası içe aktarın.",
+      noResults: "“{query}” için sonuç bulunamadı.",
       itemCount: "{n} ürün",
       addNewBtn: "Ürün Ekle/İçe Aktar",
       clearSearchAria: "Aramayı temizle",
-      impApplyBtn: "İçe Aktar",
       download: "CSV'ye Aktar",
       upload: "CSV'den İçe Aktar",
-      delTitle: "Silme Onayı",
-      delConfirm: "\u201C{name}\u201D silinsin mi? Bu işlem geri alınamaz.",
+      delTitle: "🗑️ Ürünü Sil",
+      delConfirm: "“{name}” silinsin mi? Bu işlem geri alınamaz.",
       del: "Sil",
-      impTitle: "Yedeği İçe Aktar",
-      impConfirm: "Mevcut {cur} kayıt, yedek dosyasındaki {inc} kayıtla değiştirilecek. Devam edilsin mi?",
-      impReplace: "Değiştir",
+      impTitle: "CSV'den İçe Aktar",
+      impApplyBtn: "İçe Aktar",
       editAria: "Düzenle: {name}",
       delAria: "Sil: {name}",
       searchAria: "Ürün ara",
       langAria: "Dil seçimi",
-      nameReq: "Ürün adı gereklidir.",
-      added: "Ürün eklendi.",
-      updated: "Ürün güncellendi.",
-      deleted: "Ürün silindi.",
-      imported: "İçe aktarıldı: {n} yeni kayıt eklendi.",
-      csvBadHeader: "CSV başlık satırında “Name” ve “Location” sütunları bulunmalıdır.",
-      impSumTitle: "İçe aktarma özeti",
-      impSumValid: "İçe aktarılacak satır: {n}",
-      impSumDup: "Yinelenen satır (atlanacak): {n}",
-      impSumMissing: "Eksik alanlı satır (atlanacak): {n}",
+      nameReq: "❌ Ürün adı gereklidir.",
+      added: "✅ Ürün eklendi.",
+      updated: "✅ Ürün güncellendi.",
+      deleted: "✅ Ürün silindi.",
+      imported: "✅ İçe aktarıldı: {n} yeni kayıt eklendi.",
+      exported: "✅ CSV dosyası indirildi.",
+      csvBadHeader: "❌ CSV başlık satırında “Name” ve “Location” sütunları bulunmalıdır.",
+      impSumTitle: "📋 İçe aktarma özeti",
+      impSumValid: "✅ İçe aktarılacak satır: {n}",
+      impSumDup: "⚠️ Yinelenen satır (atlanacak): {n}",
+      impSumMissing: "❌ Eksik alanlı satır (atlanacak): {n}",
       skippedListTitle: "Atlanan satırlar:",
       skippedRow: "Satır {n}",
       reasonDup: "yinelenen",
       reasonNoName: "ürün adı eksik",
       reasonNoLoc: "konum eksik",
       reasonNoBoth: "her ikisi eksik",
-      impReportTitle: "İçe aktarma tamamlandı – bazı satırlar atlandı",
-      exported: "Yedek dosyası indiriliyor\u2026",
-      invalidFile: "Dosya okunamadı veya geçerli bir yedek dosyası değil.",
-      storageWarn: "Uyarı: Tarayıcı depolamasına erişilemiyor. Verileriniz yalnızca bu oturum boyunca tutulacak ve sayfa kapatıldığında kaybolacaktır.",
-      corruptWarn: "Kayıtlı veriler okunamadı; boş liste ile başlandı.",
-      locMissingTitle: "Konum Eksik",
-      locMissingMsg: "\u201C{name}\u201D için konum girilmedi. Konum olmadan devam edilsin mi?",
-      dupExactTitle: "Ürün Zaten Mevcut",
-      dupExactMsg: "\u201C{name}\u201D ürünü \u201C{location}\u201D konumunda zaten kayıtlı. Aynı ürünü iki kez ekleyemezsiniz.",
-      dupWarnTitle: "Aynı Ürün, Farklı Konum",
-      dupWarnMsg: "\u201C{name}\u201D ürünü zaten başka bir konumda kayıtlı. Yine de yeni kayıt olarak eklensin mi?",
+      impReportTitle: "ℹ️ İçe aktarma tamamlandı – bazı satırlar atlandı",
+      invalidFile: "❌ Dosya okunamadı veya geçerli bir CSV dosyası değil.",
+      storageWarn: "⚠️ Tarayıcı depolamasına erişilemiyor. Verileriniz yalnızca bu oturum boyunca tutulacak ve sayfa kapatıldığında kaybolacaktır.",
+      corruptWarn: "⚠️ Kayıtlı veriler okunamadı; boş liste ile başlandı.",
+      locMissingTitle: "⚠️ Konum Eksik",
+      locMissingMsg: "“{name}” için konum girilmedi. Konum olmadan devam edilsin mi?",
+      dupExactTitle: "⚠️ Ürün Zaten Mevcut",
+      dupExactMsg: "Bu ürün bu konumda zaten kayıtlı.",
+      dupWarnTitle: "⚠️ Aynı Ürün, Farklı Konum",
+      dupWarnMsg: "Aynı adda ürün başka bir konumda zaten var. Yine de eklemek istiyor musunuz?",
       contAnyway: "Yine de devam et",
       ok: "Tamam",
       disclaimer: "Tüm veriler cihazınızda yerel olarak saklanır. Kataloğunuzu başka bir cihazda kullanmak için bir yedek dışa aktarın ve orada içe aktarın.",

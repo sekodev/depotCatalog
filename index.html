@@ -168,12 +168,18 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .toast{
   position:fixed;left:50%;transform:translateX(-50%);
   bottom:max(1.25rem,env(safe-area-inset-bottom,0px));
-  background:var(--text);color:var(--bg);
-  padding:.7rem 1.15rem;border-radius:999px;font-size:.9rem;
+  background:var(--surface);color:var(--text);
+  border:1px solid var(--border);
+  padding:.7rem 1.15rem;border-radius:10px;font-size:.9rem;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
   z-index:60;opacity:0;transition:opacity .25s ease;
   pointer-events:none;max-width:90vw;text-align:center;
 }
 .toast.show{opacity:1}
+.toast-success{border-left:4px solid #2e9e5b}
+.toast-warn{border-left:4px solid #e6a23c}
+.toast-error{border-left:4px solid #e0524a}
+.toast-info{border-left:4px solid var(--accent)}
 
 /* ---------- Name suggestions dropdown ---------- */
 .field{position:relative}
@@ -491,7 +497,7 @@ function persist(){
     if (evictOldestSnapshot()){
       try { localStorage.setItem(LS_ITEMS, payload); return true; } catch(e2){}
     }
-    showToast(t('storageWarn'));
+    showToast(t('storageWarn'), 'warn');
     return false;
   }
 }
@@ -561,7 +567,7 @@ function snapshotCurrentData(){
       snaps.pop();
       if (writeSnaps(snaps)) return;
     }
-    showToast(t('storageWarn'));
+    showToast(t('storageWarn'), 'warn');
   }
 }
 function evictOldestSnapshot(){
@@ -573,8 +579,11 @@ function evictOldestSnapshot(){
 
 /* ================= Toast & modal ================= */
 var toastTimer = null;
-function showToast(msg){
+var toastTypes = ['toast-success','toast-warn','toast-error','toast-info'];
+function showToast(msg, type){
   el.toast.textContent = msg;
+  toastTypes.forEach(function(tn){ el.toast.classList.remove(tn); });
+  el.toast.classList.add('toast-' + (type || 'info'));
   el.toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ el.toast.classList.remove('show'); }, 3000);
@@ -891,7 +900,7 @@ function saveInlineEdit(){
   state.editingId = null;
   persist(); snapshotCurrentData();
   renderList();
-  showToast(t('updated'));
+  showToast(t('updated'), 'success');
 }
 function buildEditRow(it){
   var row = document.createElement('div');
@@ -996,7 +1005,7 @@ async function handleFormSubmit(ev){
       var go1 = await askConfirm({
         title: t('dupWarnTitle'),
         message: t('dupWarnMsg', { name: name }),
-        okLabel: t('contAnyway'),
+        okLabel: t('add'),
         danger: true
       });
       if (!go1) return;
@@ -1018,7 +1027,7 @@ async function handleFormSubmit(ev){
     for (var k = 0; k < fl.length; k++){
       if (fl[k].id === newId){ state.page = Math.floor(k / state.pageSize) + 1; break; }
     }
-    showToast(t('added'));
+    showToast(t('added'), 'success');
   }
   resetForm();
   render();
@@ -1038,7 +1047,7 @@ function handleDelete(id){
     if (state.editingId === id) resetForm();
     persist(); snapshotCurrentData();
     render();
-    showToast(t('deleted'));
+    showToast(t('deleted'), 'success');
   });
 }
 
@@ -1069,7 +1078,7 @@ function handleExport(){
   a.click(); // direct user gesture => works on desktop and mobile
   a.remove();
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-  showToast(t('exported'));
+  showToast(t('exported'), 'success');
 }
 /* RFC-4180-style CSV parser: quoted fields, escaped quotes, CRLF/LF */
 function parseCsvRows(text){
@@ -1143,16 +1152,18 @@ function analyzeCsvImport(text){
   return { valid: valid, dup: dup, missing: missing };
 }
 function skippedLine(item, reasonKey){
-  return t('skippedRow', { n: item.row }) + ': \u201C' + item.name + '\u201D @ \u201C' +
+  // Eye-catching markers inside lists: ⚠️ duplicates, ❌ missing fields
+  var icon = (reasonKey === 'reasonDup') ? '\u26A0\uFE0F' : '\u274C';
+  return icon + ' ' + t('skippedRow', { n: item.row }) + ': \u201C' + item.name + '\u201D @ \u201C' +
          item.location + '\u201D \u2014 ' + t(reasonKey);
 }
 function handleImportFile(file){
   if (!file) return;
   var reader = new FileReader();
-  reader.onerror = function(){ showToast(t('invalidFile')); };
+  reader.onerror = function(){ showToast(t('invalidFile'), 'error'); };
   reader.onload = function(){
     var result = analyzeCsvImport(String(reader.result));
-    if (result.error){ showToast(t('csvBadHeader')); return; }
+    if (result.error){ showToast(t('csvBadHeader'), 'error'); return; }
     var skippedCount = result.dup.length + result.missing.length;
     var listItems = [];
     result.dup.forEach(function(d){
@@ -1193,7 +1204,7 @@ function handleImportFile(file){
       if (skippedCount > 0){
         showImportReport(result.dup, result.missing);
       } else {
-        showToast(t('imported', { n: result.valid.length }));
+        showToast(t('imported', { n: result.valid.length }), 'success');
       }
     });
   };
@@ -1336,7 +1347,7 @@ function init(){
       state.items = loaded.items;
       state.nextId = loaded.nextId;
     } else if (!loaded.ok){
-      setTimeout(function(){ showToast(t('corruptWarn')); }, 400);
+      setTimeout(function(){ showToast(t('corruptWarn'), 'warn'); }, 400);
     }
   } else {
     el.banner.textContent = t('storageWarn');
