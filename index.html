@@ -165,6 +165,18 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 
 /* ---------- Import report & modal list ---------- */
 .import-report .form-head{margin-bottom:.5rem}
+.report-lines{white-space:pre-line;font-size:.87rem;color:var(--muted);margin:0 0 .35rem}
+.report-list{
+  list-style:none;margin:0;padding:0;
+  font-size:.85rem;color:var(--muted);
+}
+.report-list li{padding:.3rem 0;border-bottom:1px solid var(--border);word-break:break-word}
+.report-list li.report-header{
+  font-weight:700;color:var(--text);
+  border-bottom:none;padding-bottom:.15rem;
+}
+.report-list li.report-header:not(:first-child){margin-top:.7rem}
+.report-list li:last-child{border-bottom:none}
 .modal-list{
   list-style:none;margin:0 0 .25rem;padding:0;
   max-height:180px;overflow-y:auto;
@@ -399,9 +411,8 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
       <strong id="impReportTitle"></strong>
       <button type="button" id="btnReportClose" class="icon-btn" aria-label=""></button>
     </div>
-    <p id="impReportSummary" class="count"></p>
-    <p id="impReportListTitle" class="count"></p>
-    <ul id="impReportList" class="modal-list"></ul>
+    <p id="impReportSummary" class="report-lines"></p>
+    <ul id="impReportList" class="report-list"></ul>
   </section>
 
   <!-- Add form (hidden until toggled) -->
@@ -535,7 +546,7 @@ var el = {};
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
- 'impReportTitle','impReportSummary','impReportListTitle','impReportList','btnReportClose',
+ 'impReportTitle','impReportSummary','impReportList','btnReportClose',
  'btnTheme'
 ].forEach(function(id){ el[id] = $(id); });
 
@@ -762,7 +773,6 @@ function applyStaticText(){
   el.btnClearSearch.setAttribute('aria-label', t('clearSearchAria'));
   el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
   el.impReportTitle.textContent = t('impReportTitle');
-  el.impReportListTitle.textContent = t('skippedListTitle');
   el.btnReportClose.textContent = '\u2715';
   el.btnReportClose.setAttribute('aria-label', t('close'));
   el.inpSearch.placeholder = t('searchPh');
@@ -945,15 +955,47 @@ function cancelInlineEdit(){
   state.editingId = null;
   renderList();
 }
-function saveInlineEdit(){
+async function saveInlineEdit(){
   var it = findById(state.editingId);
   var nameInput = document.querySelector('#listBody .row.editing .edit-name');
   var locInput = document.querySelector('#listBody .row.editing .edit-loc');
   if (!it || !nameInput || !locInput){ state.editingId = null; renderList(); return; }
   var name = nameInput.value.trim();
+  var location = locInput.value.trim();
   if (!name){ nameInput.focus(); return; } // empty name: stay in edit mode
+  // Duplicate checks (same rules as the add flow), excluding this product
+  var nl = name.toLowerCase();
+  var ll = location.toLowerCase();
+  var exact = false, sameName = false;
+  for (var i = 0; i < state.items.length; i++){
+    var other = state.items[i];
+    if (other.id === it.id) continue; // do not flag itself
+    if (other.name.toLowerCase() === nl){
+      sameName = true;
+      if (other.location.toLowerCase() === ll){ exact = true; break; }
+    }
+  }
+  if (exact){
+    // Same name AND same location => blocked, stay in edit mode
+    showAlert({
+      title: t('dupExactTitle'),
+      message: t('dupExactMsg'),
+      danger: true
+    });
+    return;
+  }
+  if (sameName){
+    // Same name, different location => warn but allow
+    var go1 = await askConfirm({
+      title: t('dupWarnTitle'),
+      message: t('dupWarnMsgEdit'),
+      okLabel: t('save'),
+      danger: true
+    });
+    if (!go1) return; // stay in edit mode, do not save
+  }
   it.name = name;
-  it.location = locInput.value.trim();
+  it.location = location;
   state.editingId = null;
   persist(); snapshotCurrentData();
   renderList();
@@ -1259,7 +1301,7 @@ function handleImportFile(file){
       hideImportReport();
       render();
       if (skippedCount > 0){
-        showImportReport(result.dup, result.missing);
+        showImportReport(result.valid.length, result.dup, result.missing);
       } else {
         showToast(t('imported', { n: result.valid.length }), 'success');
       }
@@ -1270,24 +1312,30 @@ function handleImportFile(file){
 function hideImportReport(){
   el.importReport.classList.add('hidden');
 }
-function showImportReport(dup, missing){
+function showImportReport(validCount, dup, missing){
   el.impReportTitle.textContent = t('impReportTitle');
-  el.impReportSummary.textContent =
-    t('impSumDup', { n: dup.length }) + '\n' +
-    t('impSumMissing', { n: missing.length });
-  el.impReportListTitle.textContent = t('skippedListTitle');
+  el.impReportSummary.textContent = t('imported', { n: validCount });
   el.impReportList.innerHTML = '';
-  dup.forEach(function(d){
+  function addItem(cls, text){
     var li = document.createElement('li');
-    li.textContent = skippedLine(d, 'reasonDup');
+    if (cls) li.className = cls;
+    li.textContent = text; // textContent => XSS-safe
     el.impReportList.appendChild(li);
-  });
-  missing.forEach(function(m){
-    var li = document.createElement('li');
-    li.textContent = skippedLine(m, m.reason === 'both' ? 'reasonNoBoth' :
-                                   (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc'));
-    el.impReportList.appendChild(li);
-  });
+  }
+  // Grouped sections with clear headers and spacing between them
+  if (dup.length){
+    addItem('report-header', t('impRepDupHeader', { n: dup.length }));
+    dup.forEach(function(d){
+      addItem('', skippedLine(d, 'reasonDup'));
+    });
+  }
+  if (missing.length){
+    addItem('report-header', t('impRepMissingHeader', { n: missing.length }));
+    missing.forEach(function(m){
+      addItem('', skippedLine(m, m.reason === 'both' ? 'reasonNoBoth' :
+                                     (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc')));
+    });
+  }
   el.importReport.classList.remove('hidden');
 }
 
