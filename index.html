@@ -297,6 +297,75 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 .theme-switch[aria-checked="true"] .sw-sun{display:none}
 .theme-switch[aria-checked="true"] .sw-moon{display:block}
 
+/* ---------- Depot selector (title area) ---------- */
+.title-area{
+  position:relative;display:flex;align-items:center;gap:.4rem;
+  min-width:0;font-size:1.35rem;margin:0;
+}
+.app-icon{flex:none}
+.depot-select{
+  display:inline-flex;align-items:center;gap:.4rem;min-width:0;
+  background:none;border:none;color:var(--text);cursor:pointer;
+  padding:.3rem .5rem;border-radius:8px;
+  font-size:1.2rem;font-weight:700;font-family:inherit;
+}
+.depot-select:hover{background:var(--bg)}
+.depot-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#depotSelectName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-caret{font-size:inherit;line-height:1;color:var(--muted);flex:none}
+.depot-menu{
+  position:absolute;top:calc(100% + 6px);left:0;min-width:250px;max-width:min(340px,calc(100vw - 2rem));
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.22);z-index:80;padding:.35rem;
+  display:flex;flex-direction:column;gap:.15rem;
+}
+.dd-row{display:flex;align-items:center;gap:.25rem;padding:.15rem .25rem;border-radius:8px}
+.dd-row:hover{background:var(--bg)}
+.dd-name{
+  flex:1;min-width:0;text-align:left;background:none;border:none;
+  color:var(--text);font-size:.95rem;font-weight:600;cursor:pointer;
+  padding:.5rem .5rem;border-radius:6px;font-family:inherit;overflow-wrap:anywhere;
+}
+.dd-name:hover{background:var(--bg)}
+.dd-name:focus-visible{outline:2px solid var(--accent)}
+.dd-name[aria-selected="true"]{font-weight:700;background:var(--bg)}
+.dd-row .icon-btn{flex:none;width:36px;height:36px;font-size:1rem}
+.dd-add-row{border-top:1px solid var(--border);margin-top:.3rem;padding-top:.3rem}
+.dd-add{
+  width:100%;text-align:left;background:none;border:none;
+  color:var(--accent);font-weight:600;cursor:pointer;
+  padding:.55rem .5rem;border-radius:6px;font-family:inherit;font-size:.95rem;
+}
+.dd-add:hover{background:var(--bg)}
+.dd-add:focus-visible{outline:2px solid var(--accent)}
+.modal-input{
+  width:100%;padding:.55rem .65rem;font-size:1rem;margin-bottom:1rem;
+  border:1px solid var(--accent);border-radius:8px;
+  background:var(--surface);color:var(--text);font-family:inherit;
+}
+.modal-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Save indicator: small subtle pill on the same line, right of the depot selector */
+.depot-select-wrap{display:inline-flex;align-items:center;gap:.55rem;min-width:0}
+.save-indicator{
+  font-size:.8rem;color:var(--muted);
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  box-shadow:var(--shadow);
+  padding:.22rem .6rem;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:.35rem;flex:none;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s ease, visibility 0s linear .25s;
+  visibility:hidden;
+}
+.save-indicator.show{
+  opacity:1;pointer-events:auto;visibility:visible;
+  transition:opacity .25s ease;
+}
+@media (prefers-reduced-motion: reduce){
+  .save-indicator{transition:none}
+  .save-indicator.show{transition:none}
+}
+.save-indicator:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
 /* ---------- Pagination ---------- */
 .pagination{
   display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
@@ -324,6 +393,9 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 @media (max-width:720px){
   body{padding-left:.75rem;padding-right:.75rem}
   h1{font-size:1.15rem}
+  header{flex-direction:column;align-items:stretch}
+  .title-area{width:100%;font-size:1.2rem}
+  .header-controls{justify-content:flex-end}
   .list-head{display:none}
   .row{
     grid-template-columns:1fr auto;
@@ -350,8 +422,20 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 <div class="wrap" id="appRoot">
 
   <header>
-    <h1><span aria-hidden="true">📦</span><span id="appTitle"></span></h1>
-    <div style="display:flex;align-items:center;gap:.5rem">
+    <h1 class="title-area">
+      <span class="app-icon" aria-hidden="true">📦</span>
+      <span class="depot-select-wrap">
+        <button type="button" id="depotSelect" class="depot-select" aria-haspopup="listbox" aria-expanded="false" aria-label="">
+          <span id="depotSelectName"></span>
+          <span class="dd-caret" aria-hidden="true">▾</span>
+        </button>
+        <span id="saveIndicator" class="save-indicator" role="status" aria-live="polite">
+          <span aria-hidden="true">💾</span><span id="saveIndText"></span>
+        </span>
+      </span>
+      <div id="depotMenu" class="depot-menu hidden" role="listbox" aria-label=""></div>
+    </h1>
+    <div class="header-controls" style="display:flex;align-items:center;gap:.5rem">
       <a id="ghLink" class="gh-link" href="https://github.com/sekodev/depotCatalog" target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
       </a>
@@ -369,7 +453,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   <div id="banner" class="banner hidden"></div>
 
   <!-- Live search -->
-  <div class="search-wrap">
+  <div class="search-wrap" id="searchWrap">
     <input type="search" id="inpSearch" class="search-input" autocomplete="off">
     <button type="button" id="btnClearSearch" class="clear-btn hidden" aria-label=""></button>
   </div>
@@ -386,7 +470,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   </section>
 
   <!-- Toolbar: export / import / add / count -->
-  <div class="toolbar">
+  <div class="toolbar" id="toolbar">
     <div class="group-export">
       <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
     </div>
@@ -454,6 +538,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText">
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
+    <input type="text" id="modalInput" class="modal-input hidden" maxlength="60" autocomplete="off">
     <ul id="modalList" class="modal-list hidden"></ul>
     <div class="modal-actions">
       <button type="button" id="modalCancel" class="btn btn-secondary"></button>
@@ -470,7 +555,8 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 'use strict';
 
 /* ================= Constants ================= */
-var LS_ITEMS   = 'depotCatalog.items.v1';
+var LS_DATA    = 'depotCatalog.data.v2';   // multi-depot storage (current)
+var LS_LEGACY  = 'depotCatalog.items.v1';  // pre-multi-depot storage (migrated once)
 var LS_LANG    = 'depotCatalog.lang';
 var LS_THEME   = 'depotCatalog.theme';
 var MAX_SNAPS = 5;
@@ -526,8 +612,11 @@ function t(key, params){
 
 /* ================= App state ================= */
 var state = {
-  items: [],
-  nextId: 1,
+  depots: [],          // [{id, name, items:[{id,name,location}]}]
+  activeDepotId: null,
+  nextDepotId: 1,
+  nextItemId: 1,
+  items: [],           // LIVE alias of the active depot's items (kept in sync)
   filter: '',
   editingId: null,
   lang: 'en',
@@ -536,10 +625,27 @@ var state = {
 };
 var storageOk = true;
 
+/* ================= Depot helpers ================= */
+function findDepot(id){
+  for (var i = 0; i < state.depots.length; i++){
+    if (state.depots[i].id === id) return state.depots[i];
+  }
+  return null;
+}
+function activeDepot(){
+  return findDepot(state.activeDepotId);
+}
+/* Keep state.items pointing at the active depot's items array so every
+   existing item operation (search, edit, delete, import...) is scoped. */
+function syncItemsRef(){
+  var d = activeDepot();
+  state.items = d ? d.items : [];
+}
+
 /* ================= DOM refs ================= */
 function $(id){ return document.getElementById(id); }
 var el = {};
-['appTitle','btnLangTr','btnLangEn','banner','formTitle','productForm',
+['btnLangTr','btnLangEn','banner','formTitle','productForm',
  'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit',
  'inpSearch','colName','colLoc','listBody','itemCount','btnExport','lblExport',
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
@@ -547,7 +653,8 @@ var el = {};
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
  'impReportTitle','impReportSummary','impReportList','btnReportClose',
- 'btnTheme'
+ 'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
+ 'toolbar','searchWrap','saveIndicator','saveIndText'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -555,44 +662,116 @@ var el = {};
 /* ================= Store (localStorage) ================= */
 function persist(){
   if (!storageOk) return true; // in-memory only
-  var payload = JSON.stringify({ version: 1, nextId: state.nextId, items: state.items });
+  var payload = JSON.stringify({
+    version: 2,
+    nextDepotId: state.nextDepotId,
+    nextItemId: state.nextItemId,
+    activeDepotId: state.activeDepotId,
+    depots: state.depots
+  });
   try {
-    localStorage.setItem(LS_ITEMS, payload);
+    localStorage.setItem(LS_DATA, payload);
+    try { localStorage.removeItem(LS_LEGACY); } catch(e2){} // migrated away
     return true;
   } catch(e){
     // Quota likely exceeded: evict old snapshots and retry once
     if (evictOldestSnapshot()){
-      try { localStorage.setItem(LS_ITEMS, payload); return true; } catch(e2){}
+      try { localStorage.setItem(LS_DATA, payload); return true; } catch(e2){}
     }
     showToast(t('storageWarn'), 'warn');
     return false;
   }
 }
-function loadItems(){
+/* Load multi-depot state; migrates the legacy flat structure once. */
+function loadState(){
+  // 1) current multi-depot format
   try {
-    var raw = localStorage.getItem(LS_ITEMS);
-    if (!raw) return { ok: true, empty: true };
-    var d = JSON.parse(raw);
-    if (!d || typeof d !== 'object' || !Array.isArray(d.items)) return { ok: false };
-    var maxId = 0, clean = [];
-    for (var i = 0; i < d.items.length; i++){
-      var it = d.items[i];
-      if (!it || typeof it.name !== 'string') continue;
-      var rec = {
-        id: (typeof it.id === 'number' && isFinite(it.id)) ? it.id : null,
-        name: String(it.name).slice(0, 200),
-        location: (typeof it.location === 'string') ? String(it.location).slice(0, 200) : ''
-      };
-      if (rec.id !== null && rec.id > maxId) maxId = rec.id;
-      clean.push(rec);
+    var raw = localStorage.getItem(LS_DATA);
+    if (raw){
+      var d = JSON.parse(raw);
+      if (d && d.version === 2 && Array.isArray(d.depots)){
+        var depots = [], maxDepot = 0, maxItem = 0;
+        for (var i = 0; i < d.depots.length; i++){
+          var dp = d.depots[i];
+          if (!dp || typeof dp.name !== 'string') continue;
+          var items = [];
+          if (Array.isArray(dp.items)){
+            for (var j = 0; j < dp.items.length; j++){
+              var it = dp.items[j];
+              if (!it || typeof it.name !== 'string') continue;
+              var rec = {
+                id: (typeof it.id === 'number' && isFinite(it.id)) ? it.id : null,
+                name: String(it.name).slice(0, 200),
+                location: (typeof it.location === 'string') ? String(it.location).slice(0, 200) : ''
+              };
+              if (rec.id !== null && rec.id > maxItem) maxItem = rec.id;
+              items.push(rec);
+            }
+          }
+          var depId = (typeof dp.id === 'number' && isFinite(dp.id)) ? dp.id : null;
+          if (depId !== null && depId > maxDepot) maxDepot = depId;
+          depots.push({ id: depId, name: String(dp.name).slice(0, 60), items: items });
+        }
+        var nextItemId = (typeof d.nextItemId === 'number' && d.nextItemId > maxItem) ? d.nextItemId : maxItem + 1;
+        depots.forEach(function(dp2){
+          if (dp2.id === null) dp2.id = nextItemId++; // degenerate but harmless
+          dp2.items.forEach(function(r){ if (r.id === null) r.id = nextItemId++; });
+        });
+        var active = (typeof d.activeDepotId === 'number' && findDepotIn(depots, d.activeDepotId))
+          ? d.activeDepotId : (depots.length ? depots[0].id : null);
+        return {
+          ok: true,
+          data: {
+            depots: depots,
+            activeDepotId: active,
+            nextDepotId: (typeof d.nextDepotId === 'number' && d.nextDepotId > maxDepot) ? d.nextDepotId : maxDepot + 1,
+            nextItemId: nextItemId
+          }
+        };
+      }
     }
-    var nextId = (typeof d.nextId === 'number' && d.nextId > maxId) ? d.nextId : maxId + 1;
-    // Ensure every record has an id
-    clean.forEach(function(r){ if (r.id === null) r.id = nextId++; });
-    return { ok: true, items: clean, nextId: nextId };
-  } catch(e){
-    return { ok: false };
+  } catch(e){ /* fall through to legacy */ }
+  // 2) legacy flat structure -> migrate into a single default depot
+  try {
+    var legacy = localStorage.getItem(LS_LEGACY);
+    if (legacy){
+      var old = JSON.parse(legacy);
+      if (old && Array.isArray(old.items)){
+        var items = [], maxId = 0;
+        for (var k = 0; k < old.items.length; k++){
+          var oit = old.items[k];
+          if (!oit || typeof oit.name !== 'string') continue;
+          var orec = {
+            id: (typeof oit.id === 'number' && isFinite(oit.id)) ? oit.id : null,
+            name: String(oit.name).slice(0, 200),
+            location: (typeof oit.location === 'string') ? String(oit.location).slice(0, 200) : ''
+          };
+          if (orec.id !== null && orec.id > maxId) maxId = orec.id;
+          items.push(orec);
+        }
+        var nextItemId = (typeof old.nextId === 'number' && old.nextId > maxId) ? old.nextId : maxId + 1;
+        items.forEach(function(r){ if (r.id === null) r.id = nextItemId++; });
+        var depotName = t('defaultDepotName');
+        return {
+          ok: true,
+          migrated: true,
+          data: {
+            depots: [{ id: 1, name: depotName, items: items }],
+            activeDepotId: 1,
+            nextDepotId: 2,
+            nextItemId: nextItemId
+          }
+        };
+      }
+    }
+  } catch(e){ /* fall through to fresh */ }
+  return { ok: true, empty: true };
+}
+function findDepotIn(depots, id){
+  for (var i = 0; i < depots.length; i++){
+    if (depots[i].id === id) return true;
   }
+  return false;
 }
 function checkStorage(){
   try {
@@ -624,7 +803,16 @@ function writeSnaps(snaps){
 }
 function snapshotCurrentData(){
   if (!storageOk) return;
-  var entry = { ts: Date.now(), data: { version: 1, nextId: state.nextId, items: state.items } };
+  var entry = {
+    ts: Date.now(),
+    data: {
+      version: 2,
+      nextDepotId: state.nextDepotId,
+      nextItemId: state.nextItemId,
+      activeDepotId: state.activeDepotId,
+      depots: state.depots
+    }
+  };
   var snaps = readSnaps();
   snaps.unshift(entry);
   while (snaps.length > MAX_SNAPS) snaps.pop(); // rolling window: keep newest 5
@@ -657,10 +845,47 @@ function showToast(msg, type){
 }
 var confirmResolve = null;
 var lastFocused = null;
+var modalInputMode = false;
 function askConfirm(opts){
+  return openModal({
+    title: opts.title,
+    message: opts.message,
+    list: opts.list,
+    okLabel: opts.okLabel,
+    danger: opts.danger,
+    alertOnly: opts.alertOnly
+  }).then(function(v){ return v === true; });
+}
+/* Input modal: resolves the trimmed input value on Save, null on cancel. */
+function askInput(opts){
+  return openModal({
+    title: opts.title,
+    message: opts.message,
+    inputValue: opts.value || '',
+    okLabel: opts.okLabel || t('save'),
+    danger: opts.danger
+  }).then(function(v){
+    if (v === true) return el.modalInput.value.trim();
+    return null;
+  });
+}
+function openModal(opts){
   lastFocused = document.activeElement;
+  modalInputMode = (typeof opts.inputValue === 'string');
   el.modalTitle.textContent = opts.title;
-  el.modalText.textContent = opts.message;
+  if (opts.message !== undefined){
+    el.modalText.textContent = opts.message;
+    el.modalText.classList.remove('hidden');
+  } else {
+    el.modalText.classList.add('hidden');
+  }
+  if (modalInputMode){
+    el.modalInput.value = opts.inputValue;
+    el.modalInput.classList.remove('hidden');
+  } else {
+    el.modalInput.value = '';
+    el.modalInput.classList.add('hidden');
+  }
   el.modalList.innerHTML = '';
   if (opts.list && opts.list.length){
     opts.list.forEach(function(line){
@@ -677,11 +902,17 @@ function askConfirm(opts){
   el.modalCancel.classList.toggle('hidden', !!opts.alertOnly);
   el.modalOk.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-primary');
   el.overlay.classList.remove('hidden');
-  el.modalOk.focus();
+  if (modalInputMode){
+    el.modalInput.focus();
+    try { el.modalInput.select(); } catch(e){}
+  } else {
+    el.modalOk.focus();
+  }
   return new Promise(function(resolve){ confirmResolve = resolve; });
 }
 function closeConfirm(value){
   el.overlay.classList.add('hidden');
+  modalInputMode = false;
   if (lastFocused && lastFocused.focus){ try { lastFocused.focus(); } catch(e){} }
   lastFocused = null;
   if (confirmResolve){ confirmResolve(value); confirmResolve = null; }
@@ -758,7 +989,21 @@ function renderSuggestions(){
 function applyStaticText(){
   document.documentElement.lang = state.lang;
   document.title = t('docTitle');
-  el.appTitle.textContent = t('appTitle');
+  // Depot selector
+  var dep = activeDepot();
+  el.depotSelectName.textContent = dep ? dep.name : '\u2014';
+  el.depotSelect.setAttribute('aria-label', t('selectAria'));
+  el.depotMenu.setAttribute('aria-label', t('selectAria'));
+  if (depotMenuIsOpen()) renderDepotMenu(); // refresh labels while open
+  // No depot => hide item-related UI until one is created
+  var hasDepot = !!dep;
+  el.btnToggleAdd.classList.toggle('hidden', !hasDepot);
+  el.toolbar.classList.toggle('hidden', !hasDepot);
+  el.searchWrap.classList.toggle('hidden', !hasDepot);
+  if (!hasDepot){
+    el.formCard.classList.add('hidden');
+    el.btnToggleAdd.classList.remove('invisible');
+  }
   el.btnToggleAdd.textContent = t('addNewBtn');
   el.formTitle.textContent = t('addTitle');
   el.lblName.textContent = t('nameLbl');
@@ -810,10 +1055,20 @@ function makeCell(text, cls){
 function renderList(){
   var body = el.listBody;
   body.innerHTML = '';
-  if (state.items.length === 0){
+  var dep = activeDepot();
+  if (!dep){
+    // No depot exists at all
+    var nd = document.createElement('div');
+    nd.className = 'empty-state';
+    nd.textContent = t('noDepotMsg');
+    body.appendChild(nd);
+    hidePagination();
+    return;
+  }
+  if (dep.items.length === 0){
     var empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.textContent = t('emptyList');
+    empty.textContent = t('emptyList', { depotName: dep.name });
     body.appendChild(empty);
     hidePagination();
     return;
@@ -999,6 +1254,7 @@ async function saveInlineEdit(){
   state.editingId = null;
   persist(); snapshotCurrentData();
   renderList();
+  showSaveIndicator();
   showToast(t('updated'), 'success');
 }
 function buildEditRow(it){
@@ -1118,7 +1374,7 @@ async function handleFormSubmit(ev){
       });
       if (!go2){ el.inpLoc.focus(); return; }
     }
-    var newId = state.nextId++;
+    var newId = state.nextItemId++;
     state.items.push({ id: newId, name: name, location: location });
     persist(); snapshotCurrentData();
     // Show the page that contains the newly added item
@@ -1126,6 +1382,7 @@ async function handleFormSubmit(ev){
     for (var k = 0; k < fl.length; k++){
       if (fl[k].id === newId){ state.page = Math.floor(k / state.pageSize) + 1; break; }
     }
+    showSaveIndicator();
     showToast(t('added'), 'success');
   }
   resetForm();
@@ -1142,10 +1399,17 @@ function handleDelete(id){
     danger: true
   }).then(function(yes){
     if (!yes) return;
-    state.items = state.items.filter(function(r){ return r.id !== id; });
+    // Splice in place: state.items aliases the active depot's array
+    var dep = activeDepot();
+    if (dep){
+      for (var i = 0; i < dep.items.length; i++){
+        if (dep.items[i].id === id){ dep.items.splice(i, 1); break; }
+      }
+    }
     if (state.editingId === id) resetForm();
     persist(); snapshotCurrentData();
     render();
+    showSaveIndicator();
     showToast(t('deleted'), 'success');
   });
 }
@@ -1159,25 +1423,40 @@ function csvEscape(value){
   }
   return v;
 }
+function sanitizeFilePart(name){
+  var s = String(name || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
+  return s || 'Depot';
+}
 function handleExport(){
-  var lines = ['Name,Location'];
-  for (var i = 0; i < state.items.length; i++){
-    lines.push(csvEscape(state.items[i].name) + ',' + csvEscape(state.items[i].location));
-  }
-  // BOM so spreadsheet apps detect UTF-8 correctly
-  var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  var d = new Date(); // local time
-  a.download = 'depotCatalog_D' + pad2(d.getDate()) + pad2(d.getMonth() + 1) +
-               String(d.getFullYear()).slice(-2) +
-               '_T' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.csv';
-  a.href = url;
-  document.body.appendChild(a);
-  a.click(); // direct user gesture => works on desktop and mobile
-  a.remove();
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-  showToast(t('exported'), 'success');
+  var dep = activeDepot();
+  if (!dep) return;
+  // Warn that only the active depot is exported; the user confirms or cancels
+  askConfirm({
+    title: t('exportWarnTitle'),
+    message: t('exportWarnMsg', { depotName: dep.name }),
+    okLabel: t('download')
+  }).then(function(yes){
+    if (!yes) return;
+    var lines = ['Name,Location'];
+    for (var i = 0; i < dep.items.length; i++){
+      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location));
+    }
+    // BOM so spreadsheet apps detect UTF-8 correctly
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var d = new Date(); // local time
+    a.download = 'depotCatalog_' + sanitizeFilePart(dep.name) +
+                 '_D' + pad2(d.getDate()) + pad2(d.getMonth() + 1) +
+                 String(d.getFullYear()).slice(-2) +
+                 '_T' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.csv';
+    a.href = url;
+    document.body.appendChild(a);
+    a.click(); // direct user gesture => works on desktop and mobile
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    showToast(t('exported'), 'success');
+  });
 }
 /* RFC-4180-style CSV parser: quoted fields, escaped quotes, CRLF/LF */
 function parseCsvRows(text){
@@ -1250,14 +1529,14 @@ function analyzeCsvImport(text){
   }
   return { valid: valid, dup: dup, missing: missing };
 }
-function skippedLine(item, reasonKey){
-  // Eye-catching markers inside lists: ⚠️ duplicates, ❌ missing fields
-  var icon = (reasonKey === 'reasonDup') ? '\u26A0\uFE0F' : '\u274C';
-  return icon + ' ' + t('skippedRow', { n: item.row }) + ': \u201C' + item.name + '\u201D @ \u201C' +
+function skippedLine(item, reasonKey, emoji){
+  var icon = emoji ? emoji + ' ' : '';
+  return icon + t('skippedRow', { n: item.row }) + ': \u201C' + item.name + '\u201D @ \u201C' +
          item.location + '\u201D \u2014 ' + t(reasonKey);
 }
 function handleImportFile(file){
   if (!file) return;
+  if (!activeDepot()) return; // nowhere to import into
   var reader = new FileReader();
   reader.onerror = function(){ showToast(t('invalidFile'), 'error'); };
   reader.onload = function(){
@@ -1285,7 +1564,7 @@ function handleImportFile(file){
       // APPEND: keep existing items, add the valid rows with new IDs
       var firstNewId = null;
       result.valid.forEach(function(v){
-        var id = state.nextId++;
+        var id = state.nextItemId++;
         if (firstNewId === null) firstNewId = id;
         state.items.push({ id: id, name: v.name, location: v.location });
       });
@@ -1303,6 +1582,7 @@ function handleImportFile(file){
       if (skippedCount > 0){
         showImportReport(result.valid.length, result.dup, result.missing);
       } else {
+        showSaveIndicator();
         showToast(t('imported', { n: result.valid.length }), 'success');
       }
     });
@@ -1326,14 +1606,14 @@ function showImportReport(validCount, dup, missing){
   if (dup.length){
     addItem('report-header', t('impRepDupHeader', { n: dup.length }));
     dup.forEach(function(d){
-      addItem('', skippedLine(d, 'reasonDup'));
+      addItem('', skippedLine(d, 'reasonDup', '\u26A0\uFE0F'));
     });
   }
   if (missing.length){
     addItem('report-header', t('impRepMissingHeader', { n: missing.length }));
     missing.forEach(function(m){
       addItem('', skippedLine(m, m.reason === 'both' ? 'reasonNoBoth' :
-                                     (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc')));
+                                     (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc'), '\u274C'));
     });
   }
   el.importReport.classList.remove('hidden');
@@ -1359,6 +1639,181 @@ function toggleTheme(){
   var next = currentTheme() === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   try { localStorage.setItem(LS_THEME, next); } catch(e){}
+}
+
+/* ================= Save indicator ================= */
+var savePhase1Timer = null;
+var savePhase2Timer = null;
+function showSaveIndicator(){
+  if (!storageOk) return;
+  clearTimeout(savePhase1Timer);
+  clearTimeout(savePhase2Timer);
+  el.saveIndicator.classList.add('show');
+  el.saveIndText.textContent = t('saving');
+  savePhase1Timer = setTimeout(function(){
+    el.saveIndText.textContent = t('saved');
+    savePhase2Timer = setTimeout(function(){
+      el.saveIndicator.classList.remove('show');
+    }, 3000);
+  }, 700);
+}
+
+/* ================= Depot selector & depot CRUD ================= */
+function depotMenuIsOpen(){
+  return !el.depotMenu.classList.contains('hidden');
+}
+function renderDepotMenu(){
+  el.depotMenu.innerHTML = '';
+  state.depots.forEach(function(dep){
+    var row = document.createElement('div');
+    row.className = 'dd-row';
+
+    var nameBtn = document.createElement('button');
+    nameBtn.type = 'button';
+    nameBtn.className = 'dd-name';
+    nameBtn.setAttribute('role', 'option');
+    nameBtn.setAttribute('aria-selected', String(dep.id === state.activeDepotId));
+    // Green circle only next to the ACTIVE depot name
+    nameBtn.textContent = (dep.id === state.activeDepotId ? '\uD83D\uDFE2 ' : '') + dep.name;
+    nameBtn.addEventListener('click', function(){ selectDepot(dep.id); });
+    row.appendChild(nameBtn);
+
+    var eb = document.createElement('button');
+    eb.type = 'button';
+    eb.className = 'icon-btn';
+    eb.textContent = '\u270F\uFE0F'; // pencil
+    eb.setAttribute('aria-label', t('editDepotAria', { name: dep.name }));
+    eb.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      closeDepotMenu();
+      openEditDepot(dep.id);
+    });
+    row.appendChild(eb);
+
+    var db = document.createElement('button');
+    db.type = 'button';
+    db.className = 'icon-btn del';
+    db.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
+    db.setAttribute('aria-label', t('deleteDepotAria', { name: dep.name }));
+    db.addEventListener('click', function(ev){
+      ev.stopPropagation();
+      closeDepotMenu();
+      openDeleteDepot(dep.id);
+    });
+    row.appendChild(db);
+
+    el.depotMenu.appendChild(row);
+  });
+  var addRow = document.createElement('div');
+  addRow.className = 'dd-add-row';
+  var ab = document.createElement('button');
+  ab.type = 'button';
+  ab.className = 'dd-add';
+  ab.textContent = t('addDepot');
+  ab.addEventListener('click', function(){
+    closeDepotMenu();
+    openAddDepotModal();
+  });
+  addRow.appendChild(ab);
+  el.depotMenu.appendChild(addRow);
+}
+function openDepotMenu(){
+  renderDepotMenu();
+  el.depotMenu.classList.remove('hidden');
+  el.depotSelect.setAttribute('aria-expanded', 'true');
+  var act = el.depotMenu.querySelector('.dd-name[aria-selected="true"]') ||
+            el.depotMenu.querySelector('.dd-name');
+  if (act) act.focus();
+}
+function closeDepotMenu(){
+  el.depotMenu.classList.add('hidden');
+  el.depotSelect.setAttribute('aria-expanded', 'false');
+}
+function selectDepot(id){
+  if (id === state.activeDepotId){ closeDepotMenu(); el.inpSearch.focus(); return; }
+  state.activeDepotId = id;
+  syncItemsRef();
+  // Reset UI to the initial app state (fresh page load feel, preferences kept)
+  state.filter = '';
+  state.page = 1;
+  state.pageSize = 5;
+  el.selPageSize.value = '5';
+  state.editingId = null;
+  el.inpSearch.value = '';
+  el.btnClearSearch.classList.add('hidden');
+  el.formCard.classList.add('hidden');            // close Add/Import section
+  el.btnToggleAdd.classList.remove('invisible'); // restore the toggle button
+  hideImportReport();                             // dismiss import notice
+  if (!el.overlay.classList.contains('hidden')) closeConfirm(false); // close any modal
+  closeDepotMenu();
+  persist(); snapshotCurrentData();
+  showSaveIndicator();
+  render();
+  el.inpSearch.focus();
+}
+function openAddDepotModal(){
+  askInput({ title: t('addDepotTitle') }).then(function(name){
+    if (name === null) return;                 // cancelled
+    if (!name){ showToast(t('depotNameReq'), 'error'); return; }
+    var id = state.nextDepotId++;
+    state.depots.push({ id: id, name: name, items: [] });
+    state.activeDepotId = id;
+    syncItemsRef();
+    state.filter = '';
+    state.page = 1;
+    state.editingId = null;
+    hideImportReport();
+    persist(); snapshotCurrentData();
+    render();
+    showSaveIndicator();
+    showToast(t('depotAdded'), 'success');
+    // Focus the add-product form so the user can start entering items
+    el.btnToggleAdd.click();
+  });
+}
+function openEditDepot(id){
+  var dep = findDepot(id);
+  if (!dep) return;
+  askInput({ title: t('editDepotTitle'), value: dep.name }).then(function(name){
+    if (name === null) return;
+    if (!name){ showToast(t('depotNameReq'), 'error'); return; }
+    dep.name = name;
+    persist(); snapshotCurrentData();
+    render();
+    showSaveIndicator();
+    showToast(t('depotRenamed'), 'success');
+  });
+}
+function openDeleteDepot(id){
+  var dep = findDepot(id);
+  if (!dep) return;
+  askConfirm({
+    title: t('deleteDepotTitle'),
+    message: t('deleteDepotConfirm', { name: dep.name }),
+    okLabel: t('del'),
+    danger: true
+  }).then(function(yes){
+    if (!yes) return;
+    state.depots = state.depots.filter(function(d){ return d.id !== id; });
+    if (state.depots.length === 0){
+      // Fallback: automatically recreate a default depot named "Depot-1"
+      state.depots = [{ id: state.nextDepotId++, name: t('defaultDepotName'), items: [] }];
+      state.activeDepotId = state.depots[0].id;
+    } else if (state.activeDepotId === id){
+      state.activeDepotId = state.depots[0].id;
+    }
+    syncItemsRef();
+    state.filter = '';
+    state.page = 1;
+    state.editingId = null;
+    el.inpSearch.value = '';
+    el.btnClearSearch.classList.add('hidden');
+    hideImportReport();
+    persist(); snapshotCurrentData();
+    render();
+    showSaveIndicator();
+    showToast(t('depotDeleted'), 'success');
+  });
 }
 
 /* ================= Event wiring & init ================= */
@@ -1447,12 +1902,53 @@ function bindEvents(){
   });
   el.modalOk.addEventListener('click', function(){ closeConfirm(true); });
   el.modalCancel.addEventListener('click', function(){ closeConfirm(false); });
+  el.modalInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      closeConfirm(true); // Save (value is read by askInput's resolver)
+    }
+  });
   el.overlay.addEventListener('click', function(ev){
     if (ev.target === el.overlay) closeConfirm(false); // backdrop click cancels
   });
   document.addEventListener('keydown', function(ev){
-    if (ev.key === 'Escape' && !el.overlay.classList.contains('hidden')){
-      closeConfirm(false);
+    if (ev.key === 'Escape'){
+      if (!el.overlay.classList.contains('hidden')){
+        closeConfirm(false);
+      } else if (depotMenuIsOpen()){
+        closeDepotMenu();
+        el.depotSelect.focus();
+      }
+    }
+  });
+  // ---- Depot selector ----
+  el.depotSelect.addEventListener('click', function(){
+    if (depotMenuIsOpen()){ closeDepotMenu(); el.depotSelect.focus(); }
+    else { openDepotMenu(); }
+  });
+  el.depotSelect.addEventListener('keydown', function(ev){
+    if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && !depotMenuIsOpen()){
+      ev.preventDefault();
+      openDepotMenu();
+    }
+  });
+  el.depotMenu.addEventListener('keydown', function(ev){
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp'){
+      ev.preventDefault();
+      var names = Array.prototype.slice.call(el.depotMenu.querySelectorAll('.dd-name'));
+      if (!names.length) return;
+      var idx = names.indexOf(document.activeElement);
+      var next;
+      if (ev.key === 'ArrowDown') next = (idx === -1) ? 0 : Math.min(names.length - 1, idx + 1);
+      else next = (idx === -1) ? names.length - 1 : Math.max(0, idx - 1);
+      names[next].focus();
+    }
+  });
+  document.addEventListener('click', function(ev){
+    if (depotMenuIsOpen() &&
+        !el.depotMenu.contains(ev.target) &&
+        !el.depotSelect.contains(ev.target)){
+      closeDepotMenu();
     }
   });
 }
@@ -1471,18 +1967,34 @@ function init(){
     return; // app stays inert; message is intentionally hardcoded English
   }
   checkStorage();
-  state.lang = detectLang();
+  state.lang = detectLang(); // runs BEFORE data load so migration can pick the language
+  var loaded = { ok: true, empty: true };
   if (storageOk){
-    var loaded = loadItems();
-    if (loaded.ok && !loaded.empty){
-      state.items = loaded.items;
-      state.nextId = loaded.nextId;
-    } else if (!loaded.ok){
-      setTimeout(function(){ showToast(t('corruptWarn'), 'warn'); }, 400);
-    }
+    loaded = loadState();
   } else {
     el.banner.textContent = t('storageWarn');
     el.banner.classList.remove('hidden');
+  }
+  if (loaded.ok && loaded.data){
+    state.depots = loaded.data.depots;
+    state.activeDepotId = loaded.data.activeDepotId;
+    state.nextDepotId = loaded.data.nextDepotId;
+    state.nextItemId = loaded.data.nextItemId;
+    syncItemsRef();
+    if (loaded.migrated){
+      persist(); snapshotCurrentData(); // write the migrated v2 state immediately
+    }
+  } else if (!loaded.ok){
+    setTimeout(function(){ showToast(t('corruptWarn'), 'warn'); }, 400);
+  }
+  if (state.depots.length === 0){
+    // Fresh start (or everything deleted): create the default depot
+    state.depots = [{ id: 1, name: t('defaultDepotName'), items: [] }];
+    state.activeDepotId = 1;
+    state.nextDepotId = 2;
+    state.nextItemId = 1;
+    syncItemsRef();
+    persist(); // make the fresh state durable right away
   }
   bindEvents();
   applyTheme(currentTheme()); // sync switch state with the active theme
