@@ -102,7 +102,7 @@ input[type="text"],input[type="search"]{
   border:1px solid var(--border);border-radius:8px;
   background:var(--bg);color:var(--text);
 }
-input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .err{font-size:.82rem;color:var(--danger);margin-top:.3rem}
 .search-input{margin-bottom:.25rem}
 
@@ -363,8 +363,24 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 @media (prefers-reduced-motion: reduce){
   .save-indicator{transition:none}
   .save-indicator.show{transition:none}
+  .toast{transition:none}
+  .theme-switch{transition:none}
+  .theme-switch::after{transition:none}
 }
 .save-indicator:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---------- Accessibility: skip link & modal focus helpers ---------- */
+.skip-link{
+  position:fixed;top:.5rem;left:.5rem;z-index:200;
+  padding:.6rem 1rem;border-radius:8px;
+  background:var(--accent);color:#fff;font-weight:600;font-size:.9rem;
+  text-decoration:none;
+  clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;
+  white-space:nowrap;width:1px;height:1px;
+}
+.skip-link:focus{
+  clip:auto;clip-path:none;overflow:visible;width:auto;height:auto;
+}
 
 /* ---------- Pagination ---------- */
 .pagination{
@@ -418,8 +434,9 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
 </style>
 </head>
 <body>
+<a id="skipLink" class="skip-link" href="#appRoot">Skip to main content</a>
 <div id="bootstrapError" class="banner hidden">Translation file missing or invalid.</div>
-<div class="wrap" id="appRoot">
+<div class="wrap" id="appRoot" tabindex="-1">
 
   <header>
     <h1 class="title-area">
@@ -486,7 +503,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline
         </select>
       </span>
     </div>
-    <button type="button" id="btnToggleAdd" class="btn btn-primary btn-toggle-add"></button>
+    <button type="button" id="btnToggleAdd" class="btn btn-primary btn-toggle-add" aria-expanded="false"></button>
   </div>
 
   <!-- Import skipped-rows report (dismissible) -->
@@ -654,7 +671,7 @@ var el = {};
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
  'impReportTitle','impReportSummary','impReportList','btnReportClose',
  'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
- 'toolbar','searchWrap','saveIndicator','saveIndText'
+ 'toolbar','searchWrap','saveIndicator','saveIndText','skipLink'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -1027,6 +1044,7 @@ function applyStaticText(){
   el.itemCount.textContent = t('itemCount', { n: state.items.length });
   el.lblExport.textContent = t('download');
   el.lblImport.textContent = t('upload');
+  el.skipLink.textContent = t('skipToMain');
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1093,6 +1111,7 @@ function renderList(){
     }
     var row = document.createElement('div');
     row.className = 'row';
+    row.setAttribute('data-id', String(it.id)); // a11y: enables focus return after inline save/cancel
     row.appendChild(makeCell(it.name, 'name'));
     row.appendChild(makeCell(it.location, 'loc'));
 
@@ -1207,8 +1226,14 @@ function startEdit(id){
   }
 }
 function cancelInlineEdit(){
+  var editedId = state.editingId; // capture before clearing (for focus return)
   state.editingId = null;
   renderList();
+  // a11y: return focus to the Edit button of the row that was being edited
+  if (editedId !== null){
+    var btn = document.querySelector('#listBody .row[data-id="' + editedId + '"] .icon-btn');
+    if (btn){ try { btn.focus(); } catch(e){} }
+  }
 }
 async function saveInlineEdit(){
   var it = findById(state.editingId);
@@ -1256,6 +1281,9 @@ async function saveInlineEdit(){
   renderList();
   showSaveIndicator();
   showToast(t('updated'), 'success');
+  // a11y: return focus to the Edit button of the saved row
+  var editBtn = document.querySelector('#listBody .row[data-id="' + it.id + '"] .icon-btn');
+  if (editBtn){ try { editBtn.focus(); } catch(e){} }
 }
 function buildEditRow(it){
   var row = document.createElement('div');
@@ -1822,12 +1850,14 @@ function bindEvents(){
   el.btnToggleAdd.addEventListener('click', function(){
     el.formCard.classList.remove('hidden');
     el.btnToggleAdd.classList.add('invisible'); // hide but keep space => no layout shift
+    el.btnToggleAdd.setAttribute('aria-expanded', 'true'); // a11y: reflect open state
     resetForm();
     el.inpName.focus();
   });
   el.btnCloseForm.addEventListener('click', function(){
     el.formCard.classList.add('hidden');
     el.btnToggleAdd.classList.remove('invisible');
+    el.btnToggleAdd.setAttribute('aria-expanded', 'false'); // a11y: reflect closed state
     resetForm();
     el.btnToggleAdd.focus();
   });
@@ -1910,6 +1940,23 @@ function bindEvents(){
   });
   el.overlay.addEventListener('click', function(ev){
     if (ev.target === el.overlay) closeConfirm(false); // backdrop click cancels
+  });
+  // Focus trap: Tab cycles within the modal while open (a11y)
+  el.overlay.addEventListener('keydown', function(ev){
+    if (ev.key !== 'Tab') return;
+    var focusables = el.overlay.querySelectorAll('button:not([disabled]),input:not([disabled])');
+    if (!focusables.length) return;
+    var first = focusables[0];
+    var last = focusables[focusables.length - 1];
+    if (ev.shiftKey){
+      if (document.activeElement === first || document.activeElement === el.overlay){
+        ev.preventDefault(); last.focus();
+      }
+    } else {
+      if (document.activeElement === last){
+        ev.preventDefault(); first.focus();
+      }
+    }
   });
   document.addEventListener('keydown', function(ev){
     if (ev.key === 'Escape'){
