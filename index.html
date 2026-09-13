@@ -120,7 +120,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 .btn-danger{background:var(--danger);color:#fff}
 .form-actions{display:flex;flex-direction:row;gap:.5rem;align-items:end}
 .hidden{display:none!important}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Fix: removed duplicate .sr-only one-liner; the canonical block below is identical (audit #9) */
 
 /* ---------- Stock list ---------- */
 .list-card{padding:0;overflow:hidden}
@@ -313,6 +313,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 .depot-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 #depotSelectName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dd-caret{font-size:inherit;line-height:1;color:var(--muted);flex:none}
+.row.editing .hint-inline{flex-basis:100%;margin-top:.15rem}
 .depot-menu{
   position:absolute;top:calc(100% + 6px);left:0;min-width:250px;max-width:min(340px,calc(100vw - 2rem));
   background:var(--surface);border:1px solid var(--border);border-radius:10px;
@@ -367,9 +368,49 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   .theme-switch{transition:none}
   .theme-switch::after{transition:none}
 }
-.save-indicator:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Fix: removed dead .save-indicator:focus-visible rule — element is aria-hidden and not focusable (audit #9) */
+
+/* ---------- Keyboard shortcuts ("?") button & cheat sheet modal ---------- */
+.ks-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;
+  font-size:.85rem;font-weight:700;font-family:inherit;
+}
+.ks-btn:hover{color:var(--text);background:var(--bg)}
+.ks-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ks-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:120;
+  display:flex;align-items:center;justify-content:center;padding:1rem;
+}
+.ks-modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+  max-width:480px;width:100%;max-height:80vh;
+  display:flex;flex-direction:column;padding:1.25rem;
+}
+.ks-modal h2{font-size:1.05rem;margin-bottom:.75rem}
+.ks-body{overflow-y:auto;flex:1;font-size:.87rem}
+.ks-section{margin-bottom:.9rem}
+.ks-section:last-child{margin-bottom:0}
+.ks-section h3{font-size:.85rem;font-weight:700;color:var(--accent);margin:0 0 .35rem}
+.ks-rows{margin:0;padding:0;list-style:none}
+.ks-rows li{display:flex;gap:.5rem;padding:.15rem 0;align-items:baseline}
+.ks-key{
+  flex:none;min-width:7rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.8rem;background:var(--bg);border:1px solid var(--border);
+  border-radius:4px;padding:.1rem .35rem;text-align:center;color:var(--text);
+}
+.ks-desc{color:var(--muted)}
+.hint-inline{font-size:.8rem;color:var(--muted)}
+#hintAddJump{position:absolute;top:100%;left:0;right:0;margin-top:.35rem;line-height:1.4}
 
 /* ---------- Accessibility: skip link & modal focus helpers ---------- */
+.sr-only{
+  position:absolute;width:1px;height:1px;
+  padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
 .skip-link{
   position:fixed;top:.5rem;left:.5rem;z-index:200;
   padding:.6rem 1rem;border-radius:8px;
@@ -434,7 +475,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 </style>
 </head>
 <body>
-<a id="skipLink" class="skip-link" href="#appRoot">Skip to main content</a>
+<!-- Fix: default label comes from translations (t('skipToMain') set at runtime); audit #7 -->
+<a id="skipLink" class="skip-link" href="#appRoot"></a>
 <div id="bootstrapError" class="banner hidden">Translation file missing or invalid.</div>
 <div class="wrap" id="appRoot" tabindex="-1">
 
@@ -446,7 +488,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
           <span id="depotSelectName"></span>
           <span class="dd-caret" aria-hidden="true">▾</span>
         </button>
-        <span id="saveIndicator" class="save-indicator" role="status" aria-live="polite">
+        <span id="saveIndicator" class="save-indicator" aria-hidden="true">
           <span aria-hidden="true">💾</span><span id="saveIndText"></span>
         </span>
       </span>
@@ -460,10 +502,13 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
         <span class="sw-icon sw-sun" aria-hidden="true">☀️</span>
         <span class="sw-icon sw-moon" aria-hidden="true">🌙</span>
       </button>
-      <div class="lang-switch" role="group">
+      <!-- Fix: ref 'langSwitch' needs this id — without it el.langSwitch was null and
+           applyStaticText threw on load, breaking every label after it (audit follow-up) -->
+      <div id="langSwitch" class="lang-switch" role="group" aria-label="">
         <button type="button" id="btnLangTr">TR</button>
         <button type="button" id="btnLangEn">EN</button>
       </div>
+      <button type="button" id="btnShortcuts" class="ks-btn" aria-label="" title="">?</button>
     </div>
   </header>
 
@@ -482,14 +527,17 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
       <span id="colLoc"></span>
       <span></span>
     </div>
-    <div id="listBody"></div>
+    <!-- a11y: list semantics (safer than table roles: inline-edit inputs inside rows
+         would violate ARIA table structure; visual header stays aria-hidden) -->
+    <div id="listBody" role="list"></div>
     <nav id="pagination" class="pagination hidden" aria-label=""></nav>
   </section>
 
   <!-- Toolbar: export / import / add / count -->
   <div class="toolbar" id="toolbar">
     <div class="group-export">
-      <button type="button" id="btnExport" class="btn btn-secondary">⬇&nbsp;<span id="lblExport"></span></button>
+      <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Export to CSV" (audit #6) -->
+      <button type="button" id="btnExport" class="btn btn-secondary"><span aria-hidden="true">⬇&nbsp;</span><span id="lblExport"></span></button>
     </div>
     <div class="center-row">
       <span id="itemCount" class="count"></span>
@@ -507,7 +555,9 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   </div>
 
   <!-- Import skipped-rows report (dismissible) -->
-  <section id="importReport" class="card import-report hidden">
+  <!-- a11y: inline notice (not a modal — no overlay/interaction blocking), so
+       region semantics let SR users find it; summary is announced via live region -->
+  <section id="importReport" class="card import-report hidden" role="region" aria-labelledby="impReportTitle">
     <div class="form-head">
       <strong id="impReportTitle"></strong>
       <button type="button" id="btnReportClose" class="icon-btn" aria-label=""></button>
@@ -526,19 +576,21 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
       <div class="field">
         <label for="inpName" id="lblName"></label>
         <input type="text" id="inpName" maxlength="120" autocomplete="off">
-        <p id="nameError" class="err hidden"></p>
+        <p id="nameError" class="err hidden" role="alert"></p>
         <div id="nameSuggest" class="suggest hidden" role="listbox" aria-label=""></div>
       </div>
       <div class="field">
         <label for="inpLoc" id="lblLoc"></label>
         <input type="text" id="inpLoc" maxlength="120" autocomplete="off">
+        <p id="hintAddJump" class="hint-inline hidden"></p>
       </div>
       <div class="form-actions field">
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
       </div>
     </form>
     <div class="import-area">
-      <button type="button" id="btnImportTrigger" class="btn btn-secondary">⬆&nbsp;<span id="lblImport"></span></button>
+      <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Import from CSV" (audit #6) -->
+      <button type="button" id="btnImportTrigger" class="btn btn-secondary"><span aria-hidden="true">⬆&nbsp;</span><span id="lblImport"></span></button>
       <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
     </div>
   </section>
@@ -549,6 +601,17 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   </footer>
 
 </div><!-- /.wrap -->
+
+<!-- Keyboard shortcuts cheat sheet -->
+<div id="ksOverlay" class="ks-overlay hidden">
+  <div class="ks-modal" role="dialog" aria-modal="true" aria-labelledby="ksTitle">
+    <h2 id="ksTitle"></h2>
+    <div id="ksBody" class="ks-body"></div>
+    <div class="modal-actions">
+      <button type="button" id="ksClose" class="btn btn-secondary"></button>
+    </div>
+  </div>
+</div>
 
 <!-- Confirmation modal -->
 <div class="overlay hidden" id="overlay">
@@ -564,7 +627,9 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   </div>
 </div>
 
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="toast" class="toast" aria-hidden="true"></div>
+<div id="srAnnouncer" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+<div id="srAnnouncerAssertive" role="alert" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
 
 <script src="translations.js"></script>
 <script>
@@ -671,7 +736,9 @@ var el = {};
  'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
  'impReportTitle','impReportSummary','impReportList','btnReportClose',
  'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
- 'toolbar','searchWrap','saveIndicator','saveIndText','skipLink'
+ 'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
+ 'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
+ 'srAnnouncer','srAnnouncerAssertive','langSwitch'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -696,6 +763,7 @@ function persist(){
       try { localStorage.setItem(LS_DATA, payload); return true; } catch(e2){}
     }
     showToast(t('storageWarn'), 'warn');
+    announce(t('storageWarn'), true);
     return false;
   }
 }
@@ -840,6 +908,7 @@ function snapshotCurrentData(){
       if (writeSnaps(snaps)) return;
     }
     showToast(t('storageWarn'), 'warn');
+    announce(t('storageWarn'), true);
   }
 }
 function evictOldestSnapshot(){
@@ -899,6 +968,8 @@ function openModal(opts){
   if (modalInputMode){
     el.modalInput.value = opts.inputValue;
     el.modalInput.classList.remove('hidden');
+    // Fix: give the depot-name input an accessible name (audit #2)
+    el.modalInput.setAttribute('aria-label', t('depotNameLbl'));
   } else {
     el.modalInput.value = '';
     el.modalInput.classList.add('hidden');
@@ -1045,11 +1116,16 @@ function applyStaticText(){
   el.lblExport.textContent = t('download');
   el.lblImport.textContent = t('upload');
   el.skipLink.textContent = t('skipToMain');
+  el.langSwitch.setAttribute('aria-label', t('langLabel'));
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
   el.ghLink.title = t('githubAria');
   syncThemeToggle();
+  el.btnShortcuts.setAttribute('aria-label', t('shortcutsAria'));
+  el.btnShortcuts.title = t('shortcutsAria');
+  el.hintAddJump.textContent = t('hintAddJump');
+  el.hintAddJump.classList.toggle('hidden', !hasDepot);
   var trAvail = !!getLang('tr'), enAvail = !!getLang('en');
   el.btnLangTr.classList.toggle('hidden', !trAvail);
   el.btnLangEn.classList.toggle('hidden', !enAvail);
@@ -1111,6 +1187,7 @@ function renderList(){
     }
     var row = document.createElement('div');
     row.className = 'row';
+    row.setAttribute('role', 'listitem'); // a11y: list semantics (see #listBody comment)
     row.setAttribute('data-id', String(it.id)); // a11y: enables focus return after inline save/cancel
     row.appendChild(makeCell(it.name, 'name'));
     row.appendChild(makeCell(it.location, 'loc'));
@@ -1174,6 +1251,7 @@ function renderPagination(totalPages){
   }
 
   var prev = mkBtn('&#8249; ' + t('prevPage'), state.page - 1, { disabled: state.page === 1 });
+  prev.setAttribute('aria-label', t('prevPageAria'));
   nav.appendChild(prev);
 
   var numbers = [];
@@ -1194,6 +1272,7 @@ function renderPagination(totalPages){
   });
 
   var next = mkBtn(t('nextPage') + ' &#8250;', state.page + 1, { disabled: state.page === totalPages });
+  next.setAttribute('aria-label', t('nextPageAria'));
   nav.appendChild(next);
 }
 function render(){
@@ -1224,11 +1303,13 @@ function startEdit(id){
     nameInput.focus();
     try { nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length); } catch(e){}
   }
+  announce(t('editingProduct', { name: it.name }));
 }
 function cancelInlineEdit(){
   var editedId = state.editingId; // capture before clearing (for focus return)
   state.editingId = null;
   renderList();
+  announce(t('editCanceled'));
   // a11y: return focus to the Edit button of the row that was being edited
   if (editedId !== null){
     var btn = document.querySelector('#listBody .row[data-id="' + editedId + '"] .icon-btn');
@@ -1274,6 +1355,16 @@ async function saveInlineEdit(){
     });
     if (!go1) return; // stay in edit mode, do not save
   }
+  if (!location){
+    // Fix: apply the same missing-location confirm as the add flow (audit #4)
+    var go2 = await askConfirm({
+      title: t('locMissingTitle'),
+      message: t('locMissingMsg', { name: name }),
+      okLabel: t('contAnyway'),
+      danger: false
+    });
+    if (!go2){ locInput.focus(); return; } // stay in edit mode
+  }
   it.name = name;
   it.location = location;
   state.editingId = null;
@@ -1281,6 +1372,7 @@ async function saveInlineEdit(){
   renderList();
   showSaveIndicator();
   showToast(t('updated'), 'success');
+  announce(t('changesSaved'));
   // a11y: return focus to the Edit button of the saved row
   var editBtn = document.querySelector('#listBody .row[data-id="' + it.id + '"] .icon-btn');
   if (editBtn){ try { editBtn.focus(); } catch(e){} }
@@ -1288,6 +1380,7 @@ async function saveInlineEdit(){
 function buildEditRow(it){
   var row = document.createElement('div');
   row.className = 'row editing';
+  row.setAttribute('role', 'listitem'); // a11y: list semantics (see #listBody comment)
 
   var nameWrap = document.createElement('div');
   nameWrap.className = 'edit-field';
@@ -1349,6 +1442,11 @@ function buildEditRow(it){
   actions.appendChild(saveBtn);
   actions.appendChild(cancelBtn);
   row.appendChild(actions);
+  // Inline keyboard hint (small, muted, non-intrusive)
+  var hint = document.createElement('div');
+  hint.className = 'hint-inline';
+  hint.textContent = t('hintInlineEdit');
+  row.appendChild(hint);
   return row;
 }
 async function handleFormSubmit(ev){
@@ -1412,6 +1510,7 @@ async function handleFormSubmit(ev){
     }
     showSaveIndicator();
     showToast(t('added'), 'success');
+    announce(t('addedNamed', { name: name }));
   }
   resetForm();
   render();
@@ -1439,6 +1538,7 @@ function handleDelete(id){
     render();
     showSaveIndicator();
     showToast(t('deleted'), 'success');
+    announce(t('deleted'));
   });
 }
 
@@ -1484,6 +1584,7 @@ function handleExport(){
     a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
     showToast(t('exported'), 'success');
+    announce(t('exported'));
   });
 }
 /* RFC-4180-style CSV parser: quoted fields, escaped quotes, CRLF/LF */
@@ -1566,10 +1667,10 @@ function handleImportFile(file){
   if (!file) return;
   if (!activeDepot()) return; // nowhere to import into
   var reader = new FileReader();
-  reader.onerror = function(){ showToast(t('invalidFile'), 'error'); };
+  reader.onerror = function(){ showToast(t('invalidFile'), 'error'); announce(t('invalidFile'), true); };
   reader.onload = function(){
     var result = analyzeCsvImport(String(reader.result));
-    if (result.error){ showToast(t('csvBadHeader'), 'error'); return; }
+    if (result.error){ showToast(t('csvBadHeader'), 'error'); announce(t('csvBadHeader'), true); return; }
     var skippedCount = result.dup.length + result.missing.length;
     var listItems = [];
     result.dup.forEach(function(d){
@@ -1609,9 +1710,12 @@ function handleImportFile(file){
       render();
       if (skippedCount > 0){
         showImportReport(result.valid.length, result.dup, result.missing);
+        showSaveIndicator(); // Fix: data is persisted even when rows were skipped (audit #8)
+        announce(t('impComplete', { n: result.valid.length, d: result.dup.length }), true);
       } else {
         showSaveIndicator();
         showToast(t('imported', { n: result.valid.length }), 'success');
+        announce(t('imported', { n: result.valid.length }));
       }
     });
   };
@@ -1655,7 +1759,7 @@ function syncThemeToggle(){
   if (!el.btnTheme) return;
   var dark = currentTheme() === 'dark';
   el.btnTheme.setAttribute('aria-checked', String(dark));
-  var label = t(dark ? 'switchToLight' : 'switchToDark');
+  var label = t('themeToggleLabel');
   el.btnTheme.setAttribute('aria-label', label);
   el.btnTheme.title = label;
 }
@@ -1667,6 +1771,7 @@ function toggleTheme(){
   var next = currentTheme() === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   try { localStorage.setItem(LS_THEME, next); } catch(e){}
+  announce(t(next === 'dark' ? 'themeDarkOn' : 'themeLightOn'));
 }
 
 /* ================= Save indicator ================= */
@@ -1678,8 +1783,10 @@ function showSaveIndicator(){
   clearTimeout(savePhase2Timer);
   el.saveIndicator.classList.add('show');
   el.saveIndText.textContent = t('saving');
+  announce(t('saving'));
   savePhase1Timer = setTimeout(function(){
     el.saveIndText.textContent = t('saved');
+    announce(t('saved'));
     savePhase2Timer = setTimeout(function(){
       el.saveIndicator.classList.remove('show');
     }, 3000);
@@ -1761,6 +1868,7 @@ function selectDepot(id){
   if (id === state.activeDepotId){ closeDepotMenu(); el.inpSearch.focus(); return; }
   state.activeDepotId = id;
   syncItemsRef();
+  var dep = activeDepot(); // Fix: dep was undeclared => ReferenceError under 'use strict'; depot-switch announce crashed (audit #1)
   // Reset UI to the initial app state (fresh page load feel, preferences kept)
   state.filter = '';
   state.page = 1;
@@ -1778,11 +1886,12 @@ function selectDepot(id){
   showSaveIndicator();
   render();
   el.inpSearch.focus();
+  announce(t('nowViewing', { name: dep ? dep.name : '' }));
 }
 function openAddDepotModal(){
   askInput({ title: t('addDepotTitle') }).then(function(name){
     if (name === null) return;                 // cancelled
-    if (!name){ showToast(t('depotNameReq'), 'error'); return; }
+    if (!name){ showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; }
     var id = state.nextDepotId++;
     state.depots.push({ id: id, name: name, items: [] });
     state.activeDepotId = id;
@@ -1795,6 +1904,7 @@ function openAddDepotModal(){
     render();
     showSaveIndicator();
     showToast(t('depotAdded'), 'success');
+    announce(t('depotAdded'));
     // Focus the add-product form so the user can start entering items
     el.btnToggleAdd.click();
   });
@@ -1804,12 +1914,13 @@ function openEditDepot(id){
   if (!dep) return;
   askInput({ title: t('editDepotTitle'), value: dep.name }).then(function(name){
     if (name === null) return;
-    if (!name){ showToast(t('depotNameReq'), 'error'); return; }
+    if (!name){ showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; }
     dep.name = name;
     persist(); snapshotCurrentData();
     render();
     showSaveIndicator();
     showToast(t('depotRenamed'), 'success');
+    announce(t('depotRenamed'));
   });
 }
 function openDeleteDepot(id){
@@ -1841,7 +1952,86 @@ function openDeleteDepot(id){
     render();
     showSaveIndicator();
     showToast(t('depotDeleted'), 'success');
+    announce(t('depotDeleted'));
   });
+}
+
+/* ================= Keyboard shortcuts cheat sheet ================= */
+var SHORTCUT_SECTIONS = [
+  { title: 'ksGlobal', rows: [
+    ['keyTabShift', 'ksTabShiftDesc'],
+    ['keyEnterSpace', 'ksEnterSpaceDesc'],
+    ['keyEsc', 'ksEscDesc'],
+    ['keyQuestion', 'ksQuestionDesc']
+  ]},
+  { title: 'ksSearch', rows: [
+    ['keyType', 'ksTypeDesc']
+  ]},
+  { title: 'ksAddProduct', rows: [
+    ['keyEnterName', 'ksEnterNameDesc'],
+    ['keyEnterLoc', 'ksEnterLocDesc']
+  ]},
+  { title: 'ksInlineEdit', rows: [
+    ['keyEnterName', 'ksEnterNameDesc'],
+    ['keyEnterLoc', 'ksEditEnterLocDesc'],
+    ['keyEsc', 'ksEditEscDesc']
+  ]},
+  { title: 'ksDepot', rows: [
+    ['keyEnterSpace', 'ksDepotOpenDesc'],
+    ['keyArrows', 'ksDepotArrowsDesc'],
+    ['keyEnter', 'ksDepotSelectDesc'],
+    ['keyEsc', 'ksDepotEscDesc']
+  ]},
+  { title: 'ksModals', rows: [
+    ['keyTab', 'ksModalTabDesc'],
+    ['keyEnter', 'ksModalEnterDesc'],
+    ['keyEsc', 'ksModalEscDesc']
+  ]}
+];
+function buildShortcutsBody(){
+  el.ksBody.innerHTML = '';
+  SHORTCUT_SECTIONS.forEach(function(sec){
+    var div = document.createElement('div');
+    div.className = 'ks-section';
+    var h3 = document.createElement('h3');
+    h3.textContent = t(sec.title);
+    div.appendChild(h3);
+    var ul = document.createElement('ul');
+    ul.className = 'ks-rows';
+    sec.rows.forEach(function(row){
+      var li = document.createElement('li');
+      var dt = document.createElement('span');
+      dt.className = 'ks-key';
+      dt.textContent = t(row[0]);
+      li.appendChild(dt);
+      var dd = document.createElement('span');
+      dd.className = 'ks-desc';
+      dd.textContent = t(row[1]);
+      li.appendChild(dd);
+      ul.appendChild(li);
+    });
+    div.appendChild(ul);
+    el.ksBody.appendChild(div);
+  });
+}
+function openShortcuts(){
+  buildShortcutsBody();
+  el.ksTitle.textContent = t('shortcutsTitle');
+  el.ksClose.textContent = t('ksClose');
+  el.ksOverlay.classList.remove('hidden');
+  el.ksClose.focus();
+}
+function closeShortcuts(){
+  el.ksOverlay.classList.add('hidden');
+  el.btnShortcuts.focus();
+}
+
+/* ================= Screen reader announcements ================= */
+function announce(msg, assertive){
+  var target = assertive ? el.srAnnouncerAssertive : el.srAnnouncer;
+  if (!target) return;
+  target.textContent = '';
+  target.textContent = msg;
 }
 
 /* ================= Event wiring & init ================= */
@@ -1868,6 +2058,7 @@ function bindEvents(){
     state.page = 1;       // page size changed => back to first page
     state.editingId = null; // editing row may not exist on the new page
     renderList();
+    announce(t('itemsPerPageChanged', { n: n }));
   });
   el.inpName.addEventListener('input', handleNameInput);
   el.inpName.addEventListener('blur', function(){ setTimeout(hideSuggestions, 120); });
@@ -1882,6 +2073,14 @@ function bindEvents(){
     if (ev.key === 'Escape') hideSuggestions();
   });
   el.inpLoc.addEventListener('input', handleLocationInput);
+  // Fix: explicit Enter-to-submit in Location (previously relied on native implicit
+  // form submission; now deterministic across browsers; audit #10)
+  el.inpLoc.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      el.btnSubmit.click(); // the type="submit" button fires the form's submit handler
+    }
+  });
   document.addEventListener('compositionstart', function(){ composing = true; });
   document.addEventListener('compositionend', function(){ composing = false; });
   el.inpSearch.addEventListener('input', function(){
@@ -1892,6 +2091,14 @@ function bindEvents(){
     renderList();
     var shown = state.filter.trim() ? getFilteredItems().length : state.items.length;
     el.itemCount.textContent = t('itemCount', { n: shown });
+    // Debounced screen reader announcement of search result count
+    clearTimeout(el.inpSearch._announceTimer);
+    el.inpSearch._announceTimer = setTimeout(function(){
+      if (state.filter.trim()){
+        if (shown === 0) announce(t('resultsNone'));
+        else announce(t('resultsFound', { n: shown }));
+      }
+    }, 400);
   });
   el.btnClearSearch.addEventListener('click', function(){
     el.inpSearch.value = '';
@@ -1908,6 +2115,38 @@ function bindEvents(){
     toggleTheme();
     applyStaticText(); // refresh aria-checked + labels
   });
+  el.btnShortcuts.addEventListener('click', openShortcuts);
+  el.ksClose.addEventListener('click', closeShortcuts);
+  el.ksOverlay.addEventListener('click', function(ev){
+    if (ev.target === el.ksOverlay) closeShortcuts();
+  });
+  // Fix: Tab focus trap for the cheat-sheet modal, mirroring #overlay (audit #3)
+  el.ksOverlay.addEventListener('keydown', function(ev){
+    if (ev.key !== 'Tab') return;
+    var focusables = el.ksOverlay.querySelectorAll('button:not([disabled]):not(.hidden)');
+    if (!focusables.length) return;
+    var first = focusables[0];
+    var last = focusables[focusables.length - 1];
+    if (ev.shiftKey){
+      if (document.activeElement === first || document.activeElement === el.ksOverlay){
+        ev.preventDefault(); last.focus();
+      }
+    } else {
+      if (document.activeElement === last){
+        ev.preventDefault(); first.focus();
+      }
+    }
+  });
+  document.addEventListener('keydown', function(ev){
+    // "?" opens the cheat sheet (not when typing in inputs/textarea)
+    if (ev.key === '?' && !ev.isComposing){
+      var tag = document.activeElement && document.activeElement.tagName;
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT'){
+        ev.preventDefault();
+        openShortcuts();
+      }
+    }
+  });
   el.pagination.addEventListener('click', function(ev){
     var b = ev.target && ev.target.closest ? ev.target.closest('.page-btn') : null;
     if (!b || b.disabled) return;
@@ -1916,6 +2155,7 @@ function bindEvents(){
       state.page = p;
       state.editingId = null; // editing row is on another page
       renderList();
+      announce(t('pageOf', { p: p, t: Math.max(1, Math.ceil(getFilteredItems().length / state.pageSize)) }));
     }
   });
   el.btnLangTr.addEventListener('click', function(){ setLang('tr'); });
@@ -1944,7 +2184,7 @@ function bindEvents(){
   // Focus trap: Tab cycles within the modal while open (a11y)
   el.overlay.addEventListener('keydown', function(ev){
     if (ev.key !== 'Tab') return;
-    var focusables = el.overlay.querySelectorAll('button:not([disabled]),input:not([disabled])');
+    var focusables = el.overlay.querySelectorAll('button:not([disabled]):not(.hidden),input:not([disabled]):not(.hidden)'); // Fix: exclude hidden controls from the trap (audit #11)
     if (!focusables.length) return;
     var first = focusables[0];
     var last = focusables[focusables.length - 1];
@@ -1965,6 +2205,8 @@ function bindEvents(){
       } else if (depotMenuIsOpen()){
         closeDepotMenu();
         el.depotSelect.focus();
+      } else if (!el.ksOverlay.classList.contains('hidden')){
+        closeShortcuts();
       }
     }
   });
@@ -2032,7 +2274,7 @@ function init(){
       persist(); snapshotCurrentData(); // write the migrated v2 state immediately
     }
   } else if (!loaded.ok){
-    setTimeout(function(){ showToast(t('corruptWarn'), 'warn'); }, 400);
+    setTimeout(function(){ showToast(t('corruptWarn'), 'warn'); announce(t('corruptWarn'), true); }, 400);
   }
   if (state.depots.length === 0){
     // Fresh start (or everything deleted): create the default depot
