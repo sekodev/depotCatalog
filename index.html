@@ -31,7 +31,12 @@
   --border:#d7dee6;
   --accent:#1663c7;
   --accent-hover:#0e4fa3;
+  /* Fix (Phase 3 contrast): solid tokens for white-text backgrounds.
+     Light values equal the text accents (white on #1663c7 = 5.76:1, AA). */
+  --accent-solid:#1663c7;
+  --accent-solid-hover:#0e4fa3;
   --danger:#c0392b;
+  --danger-solid:#c0392b;
   --danger-bg:#fdecea;
   --radius:10px;
   --shadow:0 1px 3px rgba(16,24,40,.08);
@@ -44,7 +49,14 @@
   --border:#2c3642;
   --accent:#4d94f0;
   --accent-hover:#6ba7f4;
-  --danger:#e05a4e;
+  /* Fix (Phase 3 contrast): --danger #e05a4e -> #e8715f — danger text was 4.38:1 on
+     surface and 3.98:1 on danger-bg; now 5.31:1 and 4.82:1 (WCAG AA). */
+  --danger:#e8715f;
+  /* Fix (Phase 3 contrast): solid backgrounds for white text — white on #4d94f0 was
+     only 3.08:1; #2f6fc0 gives 5.05:1, hover #27629f 6.30:1, #b33629 6.04:1 (AA). */
+  --accent-solid:#2f6fc0;
+  --accent-solid-hover:#27629f;
+  --danger-solid:#b33629;
   --danger-bg:#3a2320;
   --shadow:0 1px 3px rgba(0,0,0,.4);
 }
@@ -57,7 +69,11 @@
     --border:#2c3642;
     --accent:#4d94f0;
     --accent-hover:#6ba7f4;
-    --danger:#e05a4e;
+    /* Fix (Phase 3 contrast): mirror of the data-theme block — see comments there. */
+    --danger:#e8715f;
+    --accent-solid:#2f6fc0;
+    --accent-solid-hover:#27629f;
+    --danger-solid:#b33629;
     --danger-bg:#3a2320;
     --shadow:0 1px 3px rgba(0,0,0,.4);
   }
@@ -70,6 +86,8 @@ body{
   padding:calc(env(safe-area-inset-top,0px) + 1rem) 1rem calc(env(safe-area-inset-bottom,0px) + 2.5rem);
 }
 .wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:1rem}
+/* Fix (Phase 3 landmarks): <main> replicates .wrap spacing so wrapping the content changes no visuals */
+#appMain{display:flex;flex-direction:column;gap:1rem}
 
 /* ---------- Header ---------- */
 header{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap}
@@ -79,7 +97,7 @@ h1{font-size:1.35rem;display:flex;align-items:center;gap:.5rem}
   background:none;border:none;padding:.35rem .85rem;font-size:.85rem;font-weight:700;
   color:var(--muted);cursor:pointer;min-height:44px;min-width:52px;
 }
-.lang-switch button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.lang-switch button[aria-pressed="true"]{background:var(--accent-solid);color:#fff} /* Fix (Phase 3): 5.05:1 dark */
 
 /* ---------- Search wrap & clear button ---------- */
 .search-wrap{position:relative;display:flex;align-items:center}
@@ -113,11 +131,13 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   border:none;border-radius:8px;cursor:pointer;min-height:44px;
   font-family:inherit;
 }
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:var(--accent-hover)}
+/* Fix (Phase 3 contrast): white label on --accent-solid = 5.76:1 light / 5.05:1 dark (AA) */
+.btn-primary{background:var(--accent-solid);color:#fff}
+.btn-primary:hover{background:var(--accent-solid-hover)}
 .btn-secondary{background:transparent;color:var(--accent);border:1px solid var(--border)}
 .btn-secondary:hover{border-color:var(--accent)}
-.btn-danger{background:var(--danger);color:#fff}
+/* Fix (Phase 3 contrast): white label on --danger-solid = 5.44:1 light / 6.04:1 dark (was 3.66:1 dark) */
+.btn-danger{background:var(--danger-solid);color:#fff}
 .form-actions{display:flex;flex-direction:row;gap:.5rem;align-items:end}
 .hidden{display:none!important}
 /* Fix: removed duplicate .sr-only one-liner; the canonical block below is identical (audit #9) */
@@ -283,7 +303,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   border-radius:50%;background:var(--surface);border:1px solid var(--border);
   box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s ease;
 }
-.theme-switch[aria-checked="true"]{background:var(--accent)}
+.theme-switch[aria-checked="true"]{background:var(--accent-solid)} /* Fix (Phase 3): white knob 5.05:1 dark */
 .theme-switch[aria-checked="true"]::after{left:24px;background:#fff}
 .theme-switch:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .theme-switch .sw-icon{
@@ -414,7 +434,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 .skip-link{
   position:fixed;top:.5rem;left:.5rem;z-index:200;
   padding:.6rem 1rem;border-radius:8px;
-  background:var(--accent);color:#fff;font-weight:600;font-size:.9rem;
+  background:var(--accent-solid);color:#fff;font-weight:600;font-size:.9rem; /* Fix (Phase 3): solid token, 5.05:1 dark */
   text-decoration:none;
   clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;
   white-space:nowrap;width:1px;height:1px;
@@ -434,7 +454,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   color:var(--text);cursor:pointer;font-family:inherit;
 }
 .page-btn:hover:not([disabled]):not(.active){border-color:var(--accent);color:var(--accent)}
-.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.page-btn.active{background:var(--accent-solid);border-color:var(--accent-solid);color:#fff;font-weight:700} /* Fix (Phase 3): 5.05:1 dark */
 .page-btn[disabled]{opacity:.45;cursor:default}
 .page-ellipsis{color:var(--muted);padding:0 .25rem}
 
@@ -476,7 +496,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 </head>
 <body>
 <!-- Fix: default label comes from translations (t('skipToMain') set at runtime); audit #7 -->
-<a id="skipLink" class="skip-link" href="#appRoot"></a>
+<a id="skipLink" class="skip-link" href="#appMain"></a>
 <div id="bootstrapError" class="banner hidden">Translation file missing or invalid.</div>
 <div class="wrap" id="appRoot" tabindex="-1">
 
@@ -512,6 +532,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
     </div>
   </header>
 
+  <!-- Fix (Phase 3): <main> landmark wraps the primary content (banner/search/list/toolbar/forms) -->
+  <main id="appMain" tabindex="-1">
   <div id="banner" class="banner hidden"></div>
 
   <!-- Live search -->
@@ -522,6 +544,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 
   <!-- Stock list -->
   <section class="card list-card">
+    <!-- Fix (Phase 3): sr-only h2 for heading navigation; no visual change -->
+    <h2 id="stockListTitle" class="sr-only"></h2>
     <div class="list-head" aria-hidden="true">
       <span id="colName"></span>
       <span id="colLoc"></span>
@@ -559,7 +583,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
        region semantics let SR users find it; summary is announced via live region -->
   <section id="importReport" class="card import-report hidden" role="region" aria-labelledby="impReportTitle">
     <div class="form-head">
-      <strong id="impReportTitle"></strong>
+      <!-- Fix (Phase 3): real heading — same look (1rem bold; .form-head h2 neutralizes the .card h2 margin) -->
+      <h2 id="impReportTitle"></h2>
       <button type="button" id="btnReportClose" class="icon-btn" aria-label=""></button>
     </div>
     <p id="impReportSummary" class="report-lines"></p>
@@ -575,13 +600,13 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
     <form id="productForm" novalidate>
       <div class="field">
         <label for="inpName" id="lblName"></label>
-        <input type="text" id="inpName" maxlength="120" autocomplete="off">
+        <input type="text" id="inpName" maxlength="120" autocomplete="off" aria-describedby="nameError">
         <p id="nameError" class="err hidden" role="alert"></p>
         <div id="nameSuggest" class="suggest hidden" role="listbox" aria-label=""></div>
       </div>
       <div class="field">
         <label for="inpLoc" id="lblLoc"></label>
-        <input type="text" id="inpLoc" maxlength="120" autocomplete="off">
+        <input type="text" id="inpLoc" maxlength="120" autocomplete="off" aria-describedby="hintAddJump">
         <p id="hintAddJump" class="hint-inline hidden"></p>
       </div>
       <div class="form-actions field">
@@ -591,9 +616,12 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
     <div class="import-area">
       <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Import from CSV" (audit #6) -->
       <button type="button" id="btnImportTrigger" class="btn btn-secondary"><span aria-hidden="true">⬆&nbsp;</span><span id="lblImport"></span></button>
+      <!-- Fix (Phase 3): sr-only label for the CSV file input (spec §1) -->
+      <label for="inpImport" id="lblImportFile" class="sr-only"></label>
       <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
     </div>
   </section>
+  </main><!-- /appMain (Phase 3 landmark) -->
 
   <footer class="disclaimer">
     <span id="disclaimerText"></span>
@@ -738,7 +766,7 @@ var el = {};
  'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
  'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
  'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
- 'srAnnouncer','srAnnouncerAssertive','langSwitch'
+ 'srAnnouncer','srAnnouncerAssertive','langSwitch','stockListTitle','lblImportFile'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -1117,6 +1145,8 @@ function applyStaticText(){
   el.lblImport.textContent = t('upload');
   el.skipLink.textContent = t('skipToMain');
   el.langSwitch.setAttribute('aria-label', t('langLabel'));
+  el.stockListTitle.textContent = t('stockListTitle'); // Fix (Phase 3): sr-only h2 label
+  el.lblImportFile.textContent = t('importFileLbl'); // Fix (Phase 3): sr-only file-input label
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1390,6 +1420,7 @@ function buildEditRow(it){
   nameInput.className = 'edit-input edit-name';
   nameInput.value = it.name;
   nameInput.setAttribute('aria-label', t('nameLbl'));
+  nameInput.setAttribute('aria-describedby', 'hintInlineEdit'); // Fix (Phase 3): link keyboard hint
   nameInput.addEventListener('input', function(){ autoCapitalizeFirst(nameInput); });
   nameInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
@@ -1410,6 +1441,7 @@ function buildEditRow(it){
   locInput.className = 'edit-input edit-loc';
   locInput.value = it.location;
   locInput.setAttribute('aria-label', t('locLbl'));
+  locInput.setAttribute('aria-describedby', 'hintInlineEdit'); // Fix (Phase 3): link keyboard hint
   locInput.addEventListener('input', function(){ autoCapitalizeFirst(locInput); });
   locInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
@@ -1445,6 +1477,7 @@ function buildEditRow(it){
   // Inline keyboard hint (small, muted, non-intrusive)
   var hint = document.createElement('div');
   hint.className = 'hint-inline';
+  hint.id = 'hintInlineEdit'; // Fix (Phase 3): target for the edit inputs' aria-describedby
   hint.textContent = t('hintInlineEdit');
   row.appendChild(hint);
   return row;
