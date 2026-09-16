@@ -1147,6 +1147,7 @@ function applyStaticText(){
   el.langSwitch.setAttribute('aria-label', t('langLabel'));
   el.stockListTitle.textContent = t('stockListTitle'); // Fix (Phase 3): sr-only h2 label
   el.lblImportFile.textContent = t('importFileLbl'); // Fix (Phase 3): sr-only file-input label
+  el.pagination.setAttribute('aria-label', t('paginationAria')); // Fix (Phase 3): nav keeps its label even while hidden (renderPagination refreshes it when shown)
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
