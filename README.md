@@ -11,7 +11,7 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 
 ## Features
 
-- **CRUD**: add products (name + location) via a toggleable add-form, inline row editing (Enter to jump/save, Escape to cancel), delete (with confirmation)
+- **CRUD**: add products (name + location + amount) via a toggleable add-form, inline row editing (Enter to jump/save, Escape to cancel), delete (with confirmation)
 - **Live search**: filters by name or location, case-insensitive; search box is focused on page load
 - **Pagination**: selectable page size (5/10/15/20, default 5), numbered pages with previous/next; current page highlighted
 - **Duplicate protection**: while typing a product name in Add mode, matching products are listed under the input; exact duplicates (same name + location) are blocked with an alert; same name at a different location asks for confirmation
@@ -19,7 +19,7 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 - **Smart inputs**: first letters of name/location auto-capitalize; pasted or edited values are left untouched
 - **Edit mode**: the form pulses/scrolls into view so you can see where you're editing
 - **Persistence**: `localStorage`; automatic rolling snapshots (last 5) saved silently after every change
-- **Backup**: "Export" saves the catalog as a CSV file (`depot-catalog-export.csv`, `Name,Location` columns); "Import" loads a CSV after showing a summary with duplicate and missing-field rows that will be skipped
+- **Backup**: "Export to CSV" saves the **active depot** as `depotCatalog_{depotName}_D{DDMMYY}_T{HHMM}.csv` with `Name,Location,Amount` columns (a warning modal reminds you only the current depot is exported); "Import from CSV" appends `Name,Location,Amount` rows after a summary listing duplicate rows, missing-field rows, and rows whose missing/invalid Amount was defaulted to 1; a dismissible notice repeats the skipped/defaulted details
 - **i18n**: Turkish (default) and English, auto-detected from browser language with TR/EN switcher
 - **Privacy**: all prompts are custom in-app modals; footer shows "All data is stored locally on your device."
 - **Responsive**: desktop and mobile; dark mode follows OS setting
@@ -69,6 +69,7 @@ The site will be live at `https://<user>.github.io/depotCatalog/`.
 
 ## Data notes
 
-- Data is scoped to the browser **origin**, so entries made via `file://` are separate from those on the GitHub Pages URL. Use **Download backup / Load backup** to move data between origins or devices.
-- Backups are plain JSON files compatible across both languages.
+- Data is scoped to the browser **origin**, so entries made via `file://` are separate from those on the GitHub Pages URL. Use **Export to CSV / Import from CSV** to move data between origins or devices (exports are per-depot).
+- Internal auto-backups are JSON snapshots kept in `localStorage` (rolling window of the last 5); there is no downloadable JSON backup — CSV is the transfer format.
+- Older data or snapshots without an `amount` field are migrated silently to `amount = 1` on load.
 

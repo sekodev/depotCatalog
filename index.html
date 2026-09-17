@@ -115,7 +115,7 @@ h1{font-size:1.35rem;display:flex;align-items:center;gap:.5rem}
 .card h2{font-size:1rem;margin-bottom:.75rem}
 form#productForm{display:grid;gap:.75rem;grid-template-columns:1fr}
 .field label{display:block;font-size:.8rem;font-weight:600;margin-bottom:.25rem;color:var(--muted)}
-input[type="text"],input[type="search"]{
+input[type="text"],input[type="search"],input[type="number"]{
   width:100%;padding:.65rem .75rem;font-size:1rem;
   border:1px solid var(--border);border-radius:8px;
   background:var(--bg);color:var(--text);
@@ -145,18 +145,19 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 /* ---------- Stock list ---------- */
 .list-card{padding:0;overflow:hidden}
 .list-head{
-  display:grid;grid-template-columns:2fr 1.5fr auto;gap:.75rem;
+  display:grid;grid-template-columns:2fr 1.5fr 1fr auto;gap:.75rem;
   padding:.6rem 1rem;font-size:.75rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
   border-bottom:1px solid var(--border);
 }
 .row{
-  display:grid;grid-template-columns:2fr 1.5fr auto;gap:.75rem;align-items:center;
+  display:grid;grid-template-columns:2fr 1.5fr 1fr auto;gap:.75rem;align-items:center;
   padding:.6rem 1rem;border-bottom:1px solid var(--border);
 }
 .row:last-child{border-bottom:none}
 .row .name{word-break:break-word}
 .row .loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;word-break:break-word}
+.row .amount{color:var(--muted);font-size:.92em;word-break:break-word} /* Fix (Phase 4): Amount column — same muted style as Location */
 .row .actions{display:flex;gap:.35rem}
 .icon-btn{
   background:none;border:1px solid transparent;border-radius:8px;
@@ -462,7 +463,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 
 /* ---------- Responsive: desktop ---------- */
 @media (min-width:721px){
-  form#productForm{grid-template-columns:2fr 1.5fr auto auto;align-items:end}
+  form#productForm{grid-template-columns:2fr 1.5fr 1fr auto;align-items:end}
   .search-wrap{max-width:440px}
 }
 
@@ -476,11 +477,12 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   .list-head{display:none}
   .row{
     grid-template-columns:1fr auto;
-    grid-template-areas:"name actions" "loc actions";
+    grid-template-areas:"name actions" "loc actions" "amount actions";
     row-gap:.2rem;padding:.7rem .85rem;
   }
   .row .name{grid-area:name;font-weight:600}
   .row .loc{grid-area:loc}
+  .row .amount{grid-area:amount}
   .row .actions{grid-area:actions;flex-direction:column;align-self:center}
   .toolbar{grid-template-columns:1fr;gap:.7rem}
   .toolbar .group-export{flex-direction:column;align-items:stretch}
@@ -549,6 +551,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
     <div class="list-head" aria-hidden="true">
       <span id="colName"></span>
       <span id="colLoc"></span>
+      <span id="colAmount"></span>
       <span></span>
     </div>
     <!-- a11y: list semantics (safer than table roles: inline-edit inputs inside rows
@@ -608,6 +611,12 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
         <label for="inpLoc" id="lblLoc"></label>
         <input type="text" id="inpLoc" maxlength="120" autocomplete="off" aria-describedby="hintAddJump">
         <p id="hintAddJump" class="hint-inline hidden"></p>
+      </div>
+      <!-- Fix (Phase 4): Amount field — visible label, number input, inline error linked via aria-describedby -->
+      <div class="field">
+        <label for="inpAmount" id="lblAmount"></label>
+        <input type="number" id="inpAmount" min="0" step="1" value="1" autocomplete="off" aria-describedby="amountError">
+        <p id="amountError" class="err hidden" role="alert"></p>
       </div>
       <div class="form-actions field">
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
@@ -766,7 +775,8 @@ var el = {};
  'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
  'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
  'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
- 'srAnnouncer','srAnnouncerAssertive','langSwitch','stockListTitle','lblImportFile'
+ 'srAnnouncer','srAnnouncerAssertive','langSwitch','stockListTitle','lblImportFile',
+ 'inpAmount','lblAmount','amountError','colAmount'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -815,7 +825,11 @@ function loadState(){
               var rec = {
                 id: (typeof it.id === 'number' && isFinite(it.id)) ? it.id : null,
                 name: String(it.name).slice(0, 200),
-                location: (typeof it.location === 'string') ? String(it.location).slice(0, 200) : ''
+                location: (typeof it.location === 'string') ? String(it.location).slice(0, 200) : '',
+                /* Fix (Phase 4): migrate missing/invalid amount to 1 — silent, no
+                   announcements (loadState runs before any UI). Format stays v2:
+                   amount is an additive, optional field. */
+                amount: (typeof it.amount === 'number' && isFinite(it.amount) && it.amount >= 0 && it.amount % 1 === 0) ? it.amount : 1
               };
               if (rec.id !== null && rec.id > maxItem) maxItem = rec.id;
               items.push(rec);
@@ -857,7 +871,8 @@ function loadState(){
           var orec = {
             id: (typeof oit.id === 'number' && isFinite(oit.id)) ? oit.id : null,
             name: String(oit.name).slice(0, 200),
-            location: (typeof oit.location === 'string') ? String(oit.location).slice(0, 200) : ''
+            location: (typeof oit.location === 'string') ? String(oit.location).slice(0, 200) : '',
+            amount: 1 // Fix (Phase 4): legacy items had no amount — default silently
           };
           if (orec.id !== null && orec.id > maxId) maxId = orec.id;
           items.push(orec);
@@ -1148,6 +1163,8 @@ function applyStaticText(){
   el.stockListTitle.textContent = t('stockListTitle'); // Fix (Phase 3): sr-only h2 label
   el.lblImportFile.textContent = t('importFileLbl'); // Fix (Phase 3): sr-only file-input label
   el.pagination.setAttribute('aria-label', t('paginationAria')); // Fix (Phase 3): nav keeps its label even while hidden (renderPagination refreshes it when shown)
+  el.lblAmount.textContent = t('amount'); // Fix (Phase 4): Amount label + column header
+  el.colAmount.textContent = t('amount');
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1176,6 +1193,14 @@ function makeCell(text, cls){
   d.className = cls;
   d.textContent = text; // textContent => XSS-safe
   return d;
+}
+/* Fix (Phase 4): shared Amount validation — empty => 1; otherwise digits-only
+   non-negative integer. Used by the Add form, inline edit, and CSV import. */
+function parseAmount(raw){
+  var s = String(raw == null ? '' : raw).trim();
+  if (s === '') return { ok: true, value: 1 };
+  if (!/^[0-9]+$/.test(s)) return { ok: false, value: 1 };
+  return { ok: true, value: parseInt(s, 10) };
 }
 function renderList(){
   var body = el.listBody;
@@ -1222,6 +1247,15 @@ function renderList(){
     row.setAttribute('data-id', String(it.id)); // a11y: enables focus return after inline save/cancel
     row.appendChild(makeCell(it.name, 'name'));
     row.appendChild(makeCell(it.location, 'loc'));
+    // Fix (Phase 4): Amount cell with sr-only prefix so SR users hear "Amount: 3"
+    var amtCell = document.createElement('div');
+    amtCell.className = 'amount';
+    var amtLbl = document.createElement('span');
+    amtLbl.className = 'sr-only';
+    amtLbl.textContent = t('amount') + ': ';
+    amtCell.appendChild(amtLbl);
+    amtCell.appendChild(document.createTextNode(String(it.amount)));
+    row.appendChild(amtCell);
 
     var actions = document.createElement('div');
     actions.className = 'actions';
@@ -1315,7 +1349,9 @@ function render(){
 function resetForm(){
   el.inpName.value = '';
   el.inpLoc.value = '';
+  el.inpAmount.value = '1'; // Fix (Phase 4): Amount resets to default 1 (serial entry)
   el.nameError.classList.add('hidden');
+  el.amountError.classList.add('hidden');
   hideSuggestions();
 }
 function findById(id){
@@ -1351,10 +1387,19 @@ async function saveInlineEdit(){
   var it = findById(state.editingId);
   var nameInput = document.querySelector('#listBody .row.editing .edit-name');
   var locInput = document.querySelector('#listBody .row.editing .edit-loc');
-  if (!it || !nameInput || !locInput){ state.editingId = null; renderList(); return; }
+  var amountInput = document.querySelector('#listBody .row.editing .edit-amount');
+  if (!it || !nameInput || !locInput || !amountInput){ state.editingId = null; renderList(); return; }
   var name = nameInput.value.trim();
   var location = locInput.value.trim();
   if (!name){ nameInput.focus(); return; } // empty name: stay in edit mode
+  var amountRes = parseAmount(amountInput.value);
+  if (!amountRes.ok){
+    // Fix (Phase 4): same Amount rules as the Add form — inline error blocks save
+    var ea = document.getElementById('editAmountError');
+    if (ea){ ea.textContent = t('amountInvalid'); ea.classList.remove('hidden'); }
+    amountInput.focus();
+    return;
+  }
   // Duplicate checks (same rules as the add flow), excluding this product
   var nl = name.toLowerCase();
   var ll = location.toLowerCase();
@@ -1398,6 +1443,7 @@ async function saveInlineEdit(){
   }
   it.name = name;
   it.location = location;
+  it.amount = amountRes.value; // Fix (Phase 4): persist edited amount
   state.editingId = null;
   persist(); snapshotCurrentData();
   renderList();
@@ -1447,13 +1493,40 @@ function buildEditRow(it){
   locInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      saveInlineEdit();
+      amountInput.focus(); // Fix (Phase 4): Name -> Location -> Amount -> Save
     } else if (ev.key === 'Escape'){
       cancelInlineEdit();
     }
   });
   locWrap.appendChild(locInput);
   row.appendChild(locWrap);
+
+  // Fix (Phase 4): Amount is editable inline along with Name and Location
+  var amountWrap = document.createElement('div');
+  amountWrap.className = 'edit-field';
+  var amountInput = document.createElement('input');
+  amountInput.type = 'number';
+  amountInput.min = '0';
+  amountInput.step = '1';
+  amountInput.className = 'edit-input edit-amount';
+  amountInput.value = it.amount;
+  amountInput.setAttribute('aria-label', t('amount'));
+  amountInput.setAttribute('aria-describedby', 'editAmountError hintInlineEdit');
+  amountInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      saveInlineEdit(); // Enter in Amount saves the row
+    } else if (ev.key === 'Escape'){
+      cancelInlineEdit();
+    }
+  });
+  amountWrap.appendChild(amountInput);
+  var amountErr = document.createElement('p');
+  amountErr.className = 'err hidden';
+  amountErr.id = 'editAmountError';
+  amountErr.setAttribute('role', 'alert');
+  amountWrap.appendChild(amountErr);
+  row.appendChild(amountWrap);
 
   var actions = document.createElement('div');
   actions.className = 'actions';
@@ -1494,6 +1567,14 @@ async function handleFormSubmit(ev){
     return;
   }
   el.nameError.classList.add('hidden');
+  var amountRes = parseAmount(el.inpAmount.value);
+  if (!amountRes.ok){
+    el.amountError.textContent = t('amountInvalid'); // Fix (Phase 4): inline amount error (aria-describedby linked)
+    el.amountError.classList.remove('hidden');
+    el.inpAmount.focus();
+    return;
+  }
+  el.amountError.classList.add('hidden');
   hideSuggestions();
   if (state.editingId === null){
     var nl = name.toLowerCase();
@@ -1535,7 +1616,7 @@ async function handleFormSubmit(ev){
       if (!go2){ el.inpLoc.focus(); return; }
     }
     var newId = state.nextItemId++;
-    state.items.push({ id: newId, name: name, location: location });
+    state.items.push({ id: newId, name: name, location: location, amount: amountRes.value }); // Fix (Phase 4): amount stored
     persist(); snapshotCurrentData();
     // Show the page that contains the newly added item
     var fl = getFilteredItems();
@@ -1599,9 +1680,9 @@ function handleExport(){
     okLabel: t('download')
   }).then(function(yes){
     if (!yes) return;
-    var lines = ['Name,Location'];
+    var lines = ['Name,Location,Amount']; // Fix (Phase 4): Amount column added
     for (var i = 0; i < dep.items.length; i++){
-      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location));
+      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location) + ',' + String(dep.items[i].amount));
     }
     // BOM so spreadsheet apps detect UTF-8 correctly
     var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -1657,12 +1738,13 @@ function analyzeCsvImport(text){
   var nameIdx = header.indexOf('name');
   var locIdx = header.indexOf('location');
   if (nameIdx === -1 || locIdx === -1) return { error: true };
+  var amountIdx = header.indexOf('amount'); // Fix (Phase 4): optional Amount column
   // keys of existing items: imported rows matching these are duplicates too
   var existingKeys = {};
   for (var e = 0; e < state.items.length; e++){
     existingKeys[state.items[e].name.toLowerCase() + '||' + state.items[e].location.toLowerCase()] = true;
   }
-  var valid = [], dup = [], missing = [];
+  var valid = [], dup = [], missing = [], amountDefaulted = 0;
   var seen = {};
   for (var r = 1; r < rows.length; r++){
     var cells = rows[r];
@@ -1682,15 +1764,30 @@ function analyzeCsvImport(text){
       missing.push({ row: rowNum, name: name, location: '', reason: 'loc' });
       continue;
     }
+    // Fix (Phase 4): optional Amount — present+valid used as-is; empty/invalid/missing
+    // column defaults to 1 and is counted for user feedback (valid rows only)
+    var am = 1, amDefaulted = false;
+    if (amountIdx !== -1){
+      var rawA = (amountIdx < cells.length) ? cells[amountIdx].trim() : '';
+      if (rawA !== ''){
+        var pr = parseAmount(rawA);
+        if (pr.ok){ am = pr.value; } else { amDefaulted = true; }
+      } else {
+        amDefaulted = true;
+      }
+    } else {
+      amDefaulted = true;
+    }
     var key = name.toLowerCase() + '||' + location.toLowerCase();
     if (seen[key] || existingKeys[key]){
       dup.push({ row: rowNum, name: name, location: location });
       continue;
     }
     seen[key] = true;
-    valid.push({ name: name, location: location });
+    valid.push({ name: name, location: location, amount: am });
+    if (amDefaulted) amountDefaulted++;
   }
-  return { valid: valid, dup: dup, missing: missing };
+  return { valid: valid, dup: dup, missing: missing, amountDefaulted: amountDefaulted };
 }
 function skippedLine(item, reasonKey, emoji){
   var icon = emoji ? emoji + ' ' : '';
@@ -1718,7 +1815,8 @@ function handleImportFile(file){
       title: t('impSumTitle'),
       message: t('impSumValid', { n: result.valid.length }) + '\n' +
                t('impSumDup', { n: result.dup.length }) + '\n' +
-               t('impSumMissing', { n: result.missing.length }),
+               t('impSumMissing', { n: result.missing.length }) +
+               (result.amountDefaulted > 0 ? '\n' + t('impSumAmount', { n: result.amountDefaulted }) : ''), // Fix (Phase 4): amount-defaulted summary line (no emoji in modal)
       list: listItems,
       okLabel: t('impApplyBtn'),
       danger: false
@@ -1729,7 +1827,7 @@ function handleImportFile(file){
       result.valid.forEach(function(v){
         var id = state.nextItemId++;
         if (firstNewId === null) firstNewId = id;
-        state.items.push({ id: id, name: v.name, location: v.location });
+        state.items.push({ id: id, name: v.name, location: v.location, amount: v.amount }); // Fix (Phase 4): amount imported
       });
       state.editingId = null;
       persist(); snapshotCurrentData();
@@ -1742,10 +1840,14 @@ function handleImportFile(file){
       }
       hideImportReport();
       render();
-      if (skippedCount > 0){
-        showImportReport(result.valid.length, result.dup, result.missing);
+      if (skippedCount > 0 || result.amountDefaulted > 0){
+        // Fix (Phase 4): show the notice when rows were skipped OR when Amount was
+        // defaulted (e.g., missing Amount column) — spec requires feedback in both cases
+        showImportReport(result.valid.length, result.dup, result.missing, result.amountDefaulted);
         showSaveIndicator(); // Fix: data is persisted even when rows were skipped (audit #8)
-        announce(t('impComplete', { n: result.valid.length, d: result.dup.length }), true);
+        // Fix (Phase 4): SR users get the same defaulted-rows feedback as visual users
+        announce(t('impComplete', { n: result.valid.length, d: result.dup.length }) +
+                 (result.amountDefaulted > 0 ? ' ' + t('impSumAmount', { n: result.amountDefaulted }) : ''), true);
       } else {
         showSaveIndicator();
         showToast(t('imported', { n: result.valid.length }), 'success');
@@ -1758,7 +1860,7 @@ function handleImportFile(file){
 function hideImportReport(){
   el.importReport.classList.add('hidden');
 }
-function showImportReport(validCount, dup, missing){
+function showImportReport(validCount, dup, missing, amountDefaulted){
   el.impReportTitle.textContent = t('impReportTitle');
   el.impReportSummary.textContent = t('imported', { n: validCount });
   el.impReportList.innerHTML = '';
@@ -1781,6 +1883,10 @@ function showImportReport(validCount, dup, missing){
       addItem('', skippedLine(m, m.reason === 'both' ? 'reasonNoBoth' :
                                      (m.reason === 'name' ? 'reasonNoName' : 'reasonNoLoc'), '\u274C'));
     });
+  }
+  if (amountDefaulted > 0){
+    // Fix (Phase 4): mention amount-defaulted rows (emoji allowed outside modals)
+    addItem('report-header', t('impRepAmountHeader', { n: amountDefaulted }));
   }
   el.importReport.classList.remove('hidden');
 }
@@ -2003,11 +2109,13 @@ var SHORTCUT_SECTIONS = [
   ]},
   { title: 'ksAddProduct', rows: [
     ['keyEnterName', 'ksEnterNameDesc'],
-    ['keyEnterLoc', 'ksEnterLocDesc']
+    ['keyEnterLoc', 'ksEnterLocDesc'],
+    ['keyEnterAmount', 'ksEnterAmountDesc'] // Fix (Phase 4): Enter in Amount adds
   ]},
   { title: 'ksInlineEdit', rows: [
     ['keyEnterName', 'ksEnterNameDesc'],
     ['keyEnterLoc', 'ksEditEnterLocDesc'],
+    ['keyEnterAmount', 'ksEditEnterAmountDesc'], // Fix (Phase 4): Enter in Amount saves
     ['keyEsc', 'ksEditEscDesc']
   ]},
   { title: 'ksDepot', rows: [
@@ -2107,12 +2215,18 @@ function bindEvents(){
     if (ev.key === 'Escape') hideSuggestions();
   });
   el.inpLoc.addEventListener('input', handleLocationInput);
-  // Fix: explicit Enter-to-submit in Location (previously relied on native implicit
-  // form submission; now deterministic across browsers; audit #10)
+  // Fix (Phase 4): keyboard flow is now Name -> Location -> Amount -> submit
+  // (previously Enter in Location submitted — audit #10 hardening carried forward)
   el.inpLoc.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      el.btnSubmit.click(); // the type="submit" button fires the form's submit handler
+      el.inpAmount.focus();
+    }
+  });
+  el.inpAmount.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      el.btnSubmit.click(); // Enter in Amount submits the form
     }
   });
   document.addEventListener('compositionstart', function(){ composing = true; });
