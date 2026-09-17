@@ -121,7 +121,7 @@ input[type="text"],input[type="search"],input[type="number"]{
   background:var(--bg);color:var(--text);
 }
 input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.err{font-size:.82rem;color:var(--danger);margin-top:.3rem}
+.err{font-size:.82rem;color:var(--danger);margin-top:.3rem;min-height:1.2em;line-height:1.2} /* Fix (Phase 5): reserved line + fixed line-height (emoji glyphs otherwise inflate the box) — errors no longer shift the form layout */
 .search-input{margin-bottom:.25rem}
 
 /* ---------- Buttons ---------- */
@@ -424,7 +424,11 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 }
 .ks-desc{color:var(--muted)}
 .hint-inline{font-size:.8rem;color:var(--muted)}
-#hintAddJump{position:absolute;top:100%;left:0;right:0;margin-top:.35rem;line-height:1.4}
+/* Fix (Location alignment): the hint is a normal block below the input. It was
+   position:absolute, which (a) overlapped the next field on mobile when visible and
+   (b) left the Location field shorter than Name/Amount (which reserve an error line),
+   so the desktop row (align-items:end) dropped the Location input ~1.28rem lower. */
+#hintAddJump{margin-top:.3rem;line-height:1.2}
 
 /* ---------- Accessibility: skip link & modal focus helpers ---------- */
 .sr-only{
@@ -463,7 +467,13 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 
 /* ---------- Responsive: desktop ---------- */
 @media (min-width:721px){
-  form#productForm{grid-template-columns:2fr 1.5fr 1fr auto;align-items:end}
+  /* Fix (Location alignment): align-items start — all three inputs share the same
+     top edge; the reserved error/hint areas hang below the inputs without moving them
+     (end-alignment dropped the shorter Location input ~1.28rem lower). */
+  form#productForm{grid-template-columns:2fr 1.5fr 1fr auto;align-items:start}
+  /* Fix (Location alignment): push the submit button down past the label, onto the
+     input line (replaces the Phase 5 margin-bottom bottom-alignment hack) */
+  .form-actions{margin-top:1.21rem}
   .search-wrap{max-width:440px}
 }
 
@@ -604,7 +614,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
       <div class="field">
         <label for="inpName" id="lblName"></label>
         <input type="text" id="inpName" maxlength="120" autocomplete="off" aria-describedby="nameError">
-        <p id="nameError" class="err hidden" role="alert"></p>
+        <p id="nameError" class="err" role="alert"></p>
         <div id="nameSuggest" class="suggest hidden" role="listbox" aria-label=""></div>
       </div>
       <div class="field">
@@ -616,7 +626,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
       <div class="field">
         <label for="inpAmount" id="lblAmount"></label>
         <input type="number" id="inpAmount" min="0" step="1" value="1" autocomplete="off" aria-describedby="amountError">
-        <p id="amountError" class="err hidden" role="alert"></p>
+        <p id="amountError" class="err" role="alert"></p>
       </div>
       <div class="form-actions field">
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
@@ -1350,8 +1360,8 @@ function resetForm(){
   el.inpName.value = '';
   el.inpLoc.value = '';
   el.inpAmount.value = '1'; // Fix (Phase 4): Amount resets to default 1 (serial entry)
-  el.nameError.classList.add('hidden');
-  el.amountError.classList.add('hidden');
+  el.nameError.textContent = ''; // Fix (Phase 5): clear in place — reserved area stays
+  el.amountError.textContent = '';
   hideSuggestions();
 }
 function findById(id){
@@ -1394,7 +1404,7 @@ async function saveInlineEdit(){
   if (!name){ nameInput.focus(); return; } // empty name: stay in edit mode
   var amountRes = parseAmount(amountInput.value);
   if (!amountRes.ok){
-    // Fix (Phase 4): same Amount rules as the Add form — inline error blocks save
+    // Fix (Phase 5): Add-form uses the reserved area; the edit row keeps its Phase 4 toggling
     var ea = document.getElementById('editAmountError');
     if (ea){ ea.textContent = t('amountInvalid'); ea.classList.remove('hidden'); }
     amountInput.focus();
@@ -1474,6 +1484,7 @@ function buildEditRow(it){
       ev.preventDefault();
       locInput.focus();
     } else if (ev.key === 'Escape'){
+      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
       cancelInlineEdit();
     }
   });
@@ -1495,6 +1506,7 @@ function buildEditRow(it){
       ev.preventDefault();
       amountInput.focus(); // Fix (Phase 4): Name -> Location -> Amount -> Save
     } else if (ev.key === 'Escape'){
+      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
       cancelInlineEdit();
     }
   });
@@ -1517,11 +1529,15 @@ function buildEditRow(it){
       ev.preventDefault();
       saveInlineEdit(); // Enter in Amount saves the row
     } else if (ev.key === 'Escape'){
+      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
       cancelInlineEdit();
     }
   });
   amountWrap.appendChild(amountInput);
   var amountErr = document.createElement('p');
+  /* Fix (Phase 5 scope note): the reserved-error-area change applies to the ADD form
+     only (spec §2). The inline edit row keeps the Phase 4 display toggling — reserving
+     space here would misalign the edit inputs (centered flex row). */
   amountErr.className = 'err hidden';
   amountErr.id = 'editAmountError';
   amountErr.setAttribute('role', 'alert');
@@ -1561,20 +1577,18 @@ async function handleFormSubmit(ev){
   var name = el.inpName.value.trim();
   var location = el.inpLoc.value.trim();
   if (!name){
-    el.nameError.textContent = t('nameReq');
-    el.nameError.classList.remove('hidden');
+    el.nameError.textContent = t('nameReq'); // Fix (Phase 5): error area always reserved — text only, no display toggling
     el.inpName.focus();
     return;
   }
-  el.nameError.classList.add('hidden');
+  el.nameError.textContent = '';
   var amountRes = parseAmount(el.inpAmount.value);
   if (!amountRes.ok){
-    el.amountError.textContent = t('amountInvalid'); // Fix (Phase 4): inline amount error (aria-describedby linked)
-    el.amountError.classList.remove('hidden');
+    el.amountError.textContent = t('amountInvalid'); // Fix (Phase 5): text only — reserved area prevents layout shift
     el.inpAmount.focus();
     return;
   }
-  el.amountError.classList.add('hidden');
+  el.amountError.textContent = '';
   hideSuggestions();
   if (state.editingId === null){
     var nl = name.toLowerCase();
@@ -1744,7 +1758,7 @@ function analyzeCsvImport(text){
   for (var e = 0; e < state.items.length; e++){
     existingKeys[state.items[e].name.toLowerCase() + '||' + state.items[e].location.toLowerCase()] = true;
   }
-  var valid = [], dup = [], missing = [], amountDefaulted = 0;
+  var valid = [], dup = [], missing = [], amountDefaulted = 0, noLocation = 0;
   var seen = {};
   for (var r = 1; r < rows.length; r++){
     var cells = rows[r];
@@ -1752,16 +1766,9 @@ function analyzeCsvImport(text){
     var rowNum = r + 1; // 1-based, header is row 1
     var name = (nameIdx < cells.length) ? cells[nameIdx].trim().slice(0, 200) : '';
     var location = (locIdx < cells.length) ? cells[locIdx].trim().slice(0, 200) : '';
-    if (!name && !location){
-      missing.push({ row: rowNum, name: '', location: '', reason: 'both' });
-      continue;
-    }
     if (!name){
+      // Fix (Phase 5): only a missing NAME skips a row now — empty location is allowed
       missing.push({ row: rowNum, name: '', location: location, reason: 'name' });
-      continue;
-    }
-    if (!location){
-      missing.push({ row: rowNum, name: name, location: '', reason: 'loc' });
       continue;
     }
     // Fix (Phase 4): optional Amount — present+valid used as-is; empty/invalid/missing
@@ -1786,8 +1793,9 @@ function analyzeCsvImport(text){
     seen[key] = true;
     valid.push({ name: name, location: location, amount: am });
     if (amDefaulted) amountDefaulted++;
+    if (!location) noLocation++; // Fix (Phase 5): count imported rows with no location
   }
-  return { valid: valid, dup: dup, missing: missing, amountDefaulted: amountDefaulted };
+  return { valid: valid, dup: dup, missing: missing, amountDefaulted: amountDefaulted, noLocation: noLocation };
 }
 function skippedLine(item, reasonKey, emoji){
   var icon = emoji ? emoji + ' ' : '';
@@ -1816,6 +1824,7 @@ function handleImportFile(file){
       message: t('impSumValid', { n: result.valid.length }) + '\n' +
                t('impSumDup', { n: result.dup.length }) + '\n' +
                t('impSumMissing', { n: result.missing.length }) +
+               (result.noLocation > 0 ? '\n' + t('impSumNoLoc', { n: result.noLocation }) : '') + // Fix (Phase 5): non-blocking no-location warning
                (result.amountDefaulted > 0 ? '\n' + t('impSumAmount', { n: result.amountDefaulted }) : ''), // Fix (Phase 4): amount-defaulted summary line (no emoji in modal)
       list: listItems,
       okLabel: t('impApplyBtn'),
@@ -1840,10 +1849,10 @@ function handleImportFile(file){
       }
       hideImportReport();
       render();
-      if (skippedCount > 0 || result.amountDefaulted > 0){
+      if (skippedCount > 0 || result.amountDefaulted > 0 || result.noLocation > 0){ // Fix (Phase 5): notice also for no-location rows
         // Fix (Phase 4): show the notice when rows were skipped OR when Amount was
         // defaulted (e.g., missing Amount column) — spec requires feedback in both cases
-        showImportReport(result.valid.length, result.dup, result.missing, result.amountDefaulted);
+        showImportReport(result.valid.length, result.dup, result.missing, result.amountDefaulted, result.noLocation); // Fix (Phase 5): pass no-location count
         showSaveIndicator(); // Fix: data is persisted even when rows were skipped (audit #8)
         // Fix (Phase 4): SR users get the same defaulted-rows feedback as visual users
         announce(t('impComplete', { n: result.valid.length, d: result.dup.length }) +
@@ -1860,7 +1869,7 @@ function handleImportFile(file){
 function hideImportReport(){
   el.importReport.classList.add('hidden');
 }
-function showImportReport(validCount, dup, missing, amountDefaulted){
+function showImportReport(validCount, dup, missing, amountDefaulted, noLocation){
   el.impReportTitle.textContent = t('impReportTitle');
   el.impReportSummary.textContent = t('imported', { n: validCount });
   el.impReportList.innerHTML = '';
@@ -1887,6 +1896,10 @@ function showImportReport(validCount, dup, missing, amountDefaulted){
   if (amountDefaulted > 0){
     // Fix (Phase 4): mention amount-defaulted rows (emoji allowed outside modals)
     addItem('report-header', t('impRepAmountHeader', { n: amountDefaulted }));
+  }
+  if (noLocation > 0){
+    // Fix (Phase 5): non-blocking warning for imported rows without a location
+    addItem('report-header', t('impRepNoLocHeader', { n: noLocation }));
   }
   el.importReport.classList.remove('hidden');
 }
@@ -2355,6 +2368,11 @@ function bindEvents(){
         el.depotSelect.focus();
       } else if (!el.ksOverlay.classList.contains('hidden')){
         closeShortcuts();
+      } else if (state.editingId !== null){
+        // Fix (Phase 5): inline edit has priority over the Add/Import section — the
+        // edit inputs' own Escape handlers cancel it (they stopPropagation)
+      } else if (!el.formCard.classList.contains('hidden')){
+        el.btnCloseForm.click(); // Fix (Phase 5): Escape closes the Add/Import section (same as the close button)
       }
     }
   });
