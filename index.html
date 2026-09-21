@@ -145,19 +145,33 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 /* ---------- Stock list ---------- */
 .list-card{padding:0;overflow:hidden}
 .list-head{
-  display:grid;grid-template-columns:2fr 1.5fr 1fr auto;gap:.75rem;
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr auto;gap:.75rem;align-items:center;
   padding:.6rem 1rem;font-size:.75rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
   border-bottom:1px solid var(--border);
 }
+/* Fix (revert): Location/Amount headers are left-aligned again — the center rule for these two headers was removed with this change */
+/* Fix (sortable columns): the header buttons look like the old plain labels */
+.sort-btn{
+  background:none;border:none;padding:0;margin:0;
+  font:inherit;letter-spacing:inherit;text-transform:inherit;
+  color:inherit;cursor:pointer;text-align:left;
+}
+.sort-btn:hover{color:var(--accent)}
+.sort-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Fix (batch select): checkbox column — select-all header cell + row checkboxes */
+.check-head{display:flex;align-items:center}
+.row .check{display:flex;align-items:center}
+.row.editing .check{flex:none;align-self:center}
+input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 .row{
-  display:grid;grid-template-columns:2fr 1.5fr 1fr auto;gap:.75rem;align-items:center;
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr auto;gap:.75rem;align-items:center;
   padding:.6rem 1rem;border-bottom:1px solid var(--border);
 }
 .row:last-child{border-bottom:none}
 .row .name{word-break:break-word}
-.row .loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;word-break:break-word}
-.row .amount{color:var(--muted);font-size:.92em;word-break:break-word} /* Fix (Phase 4): Amount column — same muted style as Location */
+.row .loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word} /* Fix: line-height:1.2 — identical vertical metrics with Amount; left-aligned (revert) */
+.row .amount{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word} /* Fix (vertical alignment): same mono font + line-height as Location — identical line box; left-aligned (revert) */
 .row .actions{display:flex;gap:.35rem}
 .icon-btn{
   background:none;border:1px solid transparent;border-radius:8px;
@@ -269,6 +283,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   border:1px solid var(--accent);border-radius:6px;
   background:var(--surface);color:var(--text);font-family:inherit;
 }
+/* Fix (revert): the Location/Amount inline inputs are left-aligned again — the centering rule for these two inputs was removed */
 .edit-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .btn-sm{min-height:38px;min-width:38px;padding:.3rem .65rem;font-size:.85rem}
 
@@ -484,15 +499,19 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   header{flex-direction:column;align-items:stretch}
   .title-area{width:100%;font-size:1.2rem}
   .header-controls{justify-content:flex-end}
-  .list-head{display:none}
+  /* Fix (batch select): mobile shows a slim header row with only the select-all
+     checkbox (text headers stay hidden as before) */
+  .list-head{display:grid;grid-template-columns:auto 1fr;padding:.45rem .85rem}
+  .list-head > div:not(.check-head){display:none}
   .row{
-    grid-template-columns:1fr auto;
-    grid-template-areas:"name actions" "loc actions" "amount actions";
+    grid-template-columns:auto 1fr auto;
+    grid-template-areas:"check name actions" "check loc actions" "check amount actions";
     row-gap:.2rem;padding:.7rem .85rem;
   }
   .row .name{grid-area:name;font-weight:600}
   .row .loc{grid-area:loc}
   .row .amount{grid-area:amount}
+  .row .check{grid-area:check}
   .row .actions{grid-area:actions;flex-direction:column;align-self:center}
   .toolbar{grid-template-columns:1fr;gap:.7rem}
   .toolbar .group-export{flex-direction:column;align-items:stretch}
@@ -558,11 +577,20 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
   <section class="card list-card">
     <!-- Fix (Phase 3): sr-only h2 for heading navigation; no visual change -->
     <h2 id="stockListTitle" class="sr-only"></h2>
-    <div class="list-head" aria-hidden="true">
-      <span id="colName"></span>
-      <span id="colLoc"></span>
-      <span id="colAmount"></span>
-      <span></span>
+    <!-- Fix (sortable columns): header row is now interactive for Name/Location sorting.
+         role=row/columnheader + aria-sort carry the state to AT; the two buttons are
+         keyboard-operable (Enter/Space). Amount stays a plain header. -->
+    <div class="list-head" role="row">
+      <!-- Fix (batch select): select-all column (scoped to the current page) -->
+      <div class="check-head" role="columnheader"><input type="checkbox" id="selectAll" aria-label=""></div>
+      <div id="colNameHead" role="columnheader" aria-sort="none">
+        <button type="button" id="btnSortName" class="sort-btn" aria-label=""></button>
+      </div>
+      <div id="colLocHead" role="columnheader" aria-sort="none">
+        <button type="button" id="btnSortLoc" class="sort-btn" aria-label=""></button>
+      </div>
+      <div role="columnheader" id="colAmountHead"><span id="colAmount"></span></div>
+      <div role="columnheader"><span></span></div>
     </div>
     <!-- a11y: list semantics (safer than table roles: inline-edit inputs inside rows
          would violate ARIA table structure; visual header stays aria-hidden) -->
@@ -575,6 +603,8 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
     <div class="group-export">
       <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Export to CSV" (audit #6) -->
       <button type="button" id="btnExport" class="btn btn-secondary"><span aria-hidden="true">⬇&nbsp;</span><span id="lblExport"></span></button>
+      <!-- Fix (batch select): visible only while rows are selected; .hidden = display:none => not tab-reachable -->
+      <button type="button" id="btnDelSelected" class="btn btn-danger hidden"></button>
     </div>
     <div class="center-row">
       <span id="itemCount" class="count"></span>
@@ -747,6 +777,8 @@ var state = {
   nextItemId: 1,
   items: [],           // LIVE alias of the active depot's items (kept in sync)
   filter: '',
+  sort: { key: null, dir: null }, // Fix (sortable columns): UI state only — not persisted; reset on depot switch
+  selectedIds: {}, // Fix (batch select): page-scoped selection map (id -> true); not persisted
   editingId: null,
   lang: 'en',
   page: 1,
@@ -776,7 +808,7 @@ function $(id){ return document.getElementById(id); }
 var el = {};
 ['btnLangTr','btnLangEn','banner','formTitle','productForm',
  'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit',
- 'inpSearch','colName','colLoc','listBody','itemCount','btnExport','lblExport',
+ 'inpSearch','btnSortName','btnSortLoc','colNameHead','colLocHead','listBody','itemCount','btnExport','lblExport',
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
@@ -786,7 +818,7 @@ var el = {};
  'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
  'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
  'srAnnouncer','srAnnouncerAssertive','langSwitch','stockListTitle','lblImportFile',
- 'inpAmount','lblAmount','amountError','colAmount'
+ 'inpAmount','lblAmount','amountError','colAmount','selectAll','btnDelSelected'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -1163,8 +1195,7 @@ function applyStaticText(){
   el.btnReportClose.setAttribute('aria-label', t('close'));
   el.inpSearch.placeholder = t('searchPh');
   el.inpSearch.setAttribute('aria-label', t('searchAria'));
-  el.colName.textContent = t('colName');
-  el.colLoc.textContent = t('colLoc');
+  updateSortHeaders(); // Fix (sortable columns): labels, indicators and aria-sort (also refreshes on language switch)
   el.itemCount.textContent = t('itemCount', { n: state.items.length });
   el.lblExport.textContent = t('download');
   el.lblImport.textContent = t('upload');
@@ -1175,6 +1206,7 @@ function applyStaticText(){
   el.pagination.setAttribute('aria-label', t('paginationAria')); // Fix (Phase 3): nav keeps its label even while hidden (renderPagination refreshes it when shown)
   el.lblAmount.textContent = t('amount'); // Fix (Phase 4): Amount label + column header
   el.colAmount.textContent = t('amount');
+  el.selectAll.setAttribute('aria-label', t('selectAllAria')); // Fix (batch select)
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1192,17 +1224,43 @@ function applyStaticText(){
 }
 function getFilteredItems(){
   var q = state.filter.trim().toLowerCase();
-  if (!q) return state.items.slice();
-  return state.items.filter(function(it){
-    return it.name.toLowerCase().indexOf(q) !== -1 ||
-           it.location.toLowerCase().indexOf(q) !== -1;
-  });
+  var list = state.items.slice();
+  if (q){
+    list = list.filter(function(it){
+      return it.name.toLowerCase().indexOf(q) !== -1 ||
+             it.location.toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  /* Fix (sortable columns): apply the active sort AFTER filtering (never bypasses
+     search), case-insensitive via locale-aware comparison in the current language. */
+  if (state.sort.key){
+    var k = state.sort.key;
+    var m = (state.sort.dir === 'desc') ? -1 : 1;
+    list.sort(function(x, y){ return x[k].localeCompare(y[k], state.lang) * m; });
+  }
+  return list;
 }
 function makeCell(text, cls){
   var d = document.createElement('div');
   d.className = cls;
   d.textContent = text; // textContent => XSS-safe
   return d;
+}
+/* Fix (batch select): leading checkbox cell for a row. In edit mode the checkbox is
+   disabled (the row cannot be selected while being edited). */
+function makeCheckCell(it, disabled){
+  var wrap = document.createElement('div');
+  wrap.className = 'check';
+  var cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'row-check';
+  cb.setAttribute('data-id', String(it.id));
+  cb.checked = !!state.selectedIds[it.id];
+  if (disabled) cb.disabled = true;
+  cb.setAttribute('aria-label', t('selectItemAria', { name: it.name, location: it.location || '\u2014' }));
+  cb.addEventListener('change', function(){ toggleSelect(it.id); });
+  wrap.appendChild(cb);
+  return wrap;
 }
 /* Fix (Phase 4): shared Amount validation — empty => 1; otherwise digits-only
    non-negative integer. Used by the Add form, inline edit, and CSV import. */
@@ -1215,6 +1273,7 @@ function parseAmount(raw){
 function renderList(){
   var body = el.listBody;
   body.innerHTML = '';
+  syncBatchUI(); // Fix (batch select): prune selection to the visible page + sync select-all/button
   var dep = activeDepot();
   if (!dep){
     // No depot exists at all
@@ -1255,6 +1314,7 @@ function renderList(){
     row.className = 'row';
     row.setAttribute('role', 'listitem'); // a11y: list semantics (see #listBody comment)
     row.setAttribute('data-id', String(it.id)); // a11y: enables focus return after inline save/cancel
+    row.appendChild(makeCheckCell(it)); // Fix (batch select): leading checkbox
     row.appendChild(makeCell(it.name, 'name'));
     row.appendChild(makeCell(it.location, 'loc'));
     // Fix (Phase 4): Amount cell with sr-only prefix so SR users hear "Amount: 3"
@@ -1374,6 +1434,7 @@ function startEdit(id){
   var it = findById(id);
   if (!it) return;
   state.editingId = id;
+  delete state.selectedIds[id]; // Fix (batch select): a row in edit mode cannot stay selected
   renderList();
   var nameInput = document.querySelector('#listBody .row.editing .edit-name');
   if (nameInput){
@@ -1468,6 +1529,7 @@ function buildEditRow(it){
   var row = document.createElement('div');
   row.className = 'row editing';
   row.setAttribute('role', 'listitem'); // a11y: list semantics (see #listBody comment)
+  row.appendChild(makeCheckCell(it, true)); // Fix (batch select): disabled while this row is edited
 
   var nameWrap = document.createElement('div');
   nameWrap.className = 'edit-field';
@@ -2024,6 +2086,8 @@ function selectDepot(id){
   var dep = activeDepot(); // Fix: dep was undeclared => ReferenceError under 'use strict'; depot-switch announce crashed (audit #1)
   // Reset UI to the initial app state (fresh page load feel, preferences kept)
   state.filter = '';
+  state.sort = { key: null, dir: null }; // Fix (sortable columns): sort resets to Default on depot switch
+  state.selectedIds = {}; // Fix (batch select): depot switch clears selection
   state.page = 1;
   state.pageSize = 5;
   el.selPageSize.value = '5';
@@ -2050,6 +2114,8 @@ function openAddDepotModal(){
     state.activeDepotId = id;
     syncItemsRef();
     state.filter = '';
+    state.sort = { key: null, dir: null }; // Fix (sortable columns): active depot changed — reset sort
+    state.selectedIds = {}; // Fix (batch select): depot changed — clear selection
     state.page = 1;
     state.editingId = null;
     hideImportReport();
@@ -2096,6 +2162,8 @@ function openDeleteDepot(id){
     }
     syncItemsRef();
     state.filter = '';
+    state.sort = { key: null, dir: null }; // Fix (sortable columns): active depot may have changed — reset sort
+    state.selectedIds = {}; // Fix (batch select): depot may have changed — clear selection
     state.page = 1;
     state.editingId = null;
     el.inpSearch.value = '';
@@ -2181,6 +2249,158 @@ function closeShortcuts(){
   el.btnShortcuts.focus();
 }
 
+/* Fix (sortable columns): header state — indicator char, aria-label and aria-sort
+   for both sortable headers; the inactive sortable column reports aria-sort "none". */
+function updateSortHeaders(){
+  var nameInd = '\u2195', locInd = '\u2195', nameSort = 'none', locSort = 'none';
+  var nameAria = t('sortAriaUnsorted', { col: t('colName') });
+  var locAria = t('sortAriaUnsorted', { col: t('colLoc') });
+  if (state.sort.key === 'name'){
+    if (state.sort.dir === 'asc'){
+      nameInd = '\u2191'; nameSort = 'ascending';
+      nameAria = t('sortAriaAsc', { col: t('colName') });
+    } else {
+      nameInd = '\u2193'; nameSort = 'descending';
+      nameAria = t('sortAriaDesc', { col: t('colName') });
+    }
+  } else if (state.sort.key === 'location'){
+    if (state.sort.dir === 'asc'){
+      locInd = '\u2191'; locSort = 'ascending';
+      locAria = t('sortAriaAsc', { col: t('colLoc') });
+    } else {
+      locInd = '\u2193'; locSort = 'descending';
+      locAria = t('sortAriaDesc', { col: t('colLoc') });
+    }
+  }
+  el.btnSortName.textContent = t('colName') + ' ' + nameInd;
+  el.btnSortName.setAttribute('aria-label', nameAria);
+  el.colNameHead.setAttribute('aria-sort', nameSort);
+  el.btnSortLoc.textContent = t('colLoc') + ' ' + locInd;
+  el.btnSortLoc.setAttribute('aria-label', locAria);
+  el.colLocHead.setAttribute('aria-sort', locSort);
+}
+/* Fix (sortable columns): 3-state cycle per header — unsorted -> asc -> desc -> unsorted.
+   Resets pagination to page 1; announces the new state via the polite live region. */
+function cycleSort(key){
+  if (state.sort.key === key){
+    if (state.sort.dir === 'asc'){
+      state.sort.dir = 'desc';
+    } else {
+      state.sort.key = null;
+      state.sort.dir = null;
+    }
+  } else {
+    state.sort.key = key;
+    state.sort.dir = 'asc';
+  }
+  state.page = 1;         // sort change resets pagination
+  state.editingId = null; // the editing row may sit on another page after reordering
+  updateSortHeaders();
+  renderList();
+  if (state.sort.key === null){
+    announce(t('sortAnnCleared'));
+  } else {
+    var col = t(state.sort.key === 'name' ? 'colName' : 'colLoc');
+    announce(t(state.sort.dir === 'asc' ? 'sortAnnAsc' : 'sortAnnDesc', { col: col }));
+  }
+}
+
+/* ================= Batch selection & batch delete ================= */
+/* Selection is page-scoped: only ids visible on the current page stay selected. */
+function visiblePageItems(){
+  var filtered = getFilteredItems();
+  if (filtered.length === 0) return [];
+  var totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+  var page = Math.min(Math.max(1, state.page), totalPages);
+  var startIdx = (page - 1) * state.pageSize;
+  return filtered.slice(startIdx, startIdx + state.pageSize);
+}
+function countSelection(){
+  return Object.keys(state.selectedIds).length;
+}
+/* Prune the selection to the visible page and sync the select-all checkbox +
+   Delete-selected button. Runs at the top of renderList, so search, sort,
+   pagination, depot switches and page jumps all keep the selection consistent. */
+function syncBatchUI(){
+  var vis = visiblePageItems();
+  var visIds = {};
+  for (var i = 0; i < vis.length; i++) visIds[vis[i].id] = true;
+  Object.keys(state.selectedIds).forEach(function(id){
+    if (!visIds[id]) delete state.selectedIds[id];
+  });
+  updateSelectAllState(vis);
+  updateDeleteSelectedBtn();
+}
+function updateSelectAllState(vis){
+  if (!el.selectAll) return;
+  if (!vis) vis = visiblePageItems();
+  var selCount = 0;
+  for (var i = 0; i < vis.length; i++){ if (state.selectedIds[vis[i].id]) selCount++; }
+  el.selectAll.disabled = (vis.length === 0);
+  el.selectAll.checked = (vis.length > 0 && selCount === vis.length);
+  el.selectAll.indeterminate = (selCount > 0 && selCount < vis.length); // mixed state, exposed to AT via the IDL property
+}
+function updateDeleteSelectedBtn(){
+  var n = countSelection();
+  if (n > 0){
+    el.btnDelSelected.textContent = t('delSelectedCount', { n: n });
+    el.btnDelSelected.classList.remove('hidden'); // display:none => not tab-reachable
+  } else {
+    el.btnDelSelected.classList.add('hidden');
+  }
+}
+function toggleSelect(id){
+  if (state.selectedIds[id]) delete state.selectedIds[id];
+  else state.selectedIds[id] = true;
+  updateSelectAllState();
+  updateDeleteSelectedBtn();
+  var n = countSelection();
+  announce(n > 0 ? t('nSelected', { n: n }) : t('selectionCleared'));
+}
+function toggleSelectAll(){
+  var vis = visiblePageItems();
+  var allSelected = (vis.length > 0);
+  for (var i = 0; i < vis.length; i++){ if (!state.selectedIds[vis[i].id]){ allSelected = false; break; } }
+  for (var j = 0; j < vis.length; j++){
+    if (allSelected) delete state.selectedIds[vis[j].id];
+    else state.selectedIds[vis[j].id] = true;
+  }
+  // update the visible row checkboxes without a full re-render
+  var boxes = el.listBody.querySelectorAll('.row-check');
+  for (var k = 0; k < boxes.length; k++){
+    boxes[k].checked = !!state.selectedIds[boxes[k].getAttribute('data-id')];
+  }
+  updateSelectAllState(vis);
+  updateDeleteSelectedBtn();
+  var n = countSelection();
+  announce(n > 0 ? t('nSelected', { n: n }) : t('selectionCleared'));
+}
+function handleDeleteSelected(){
+  var n = countSelection();
+  if (n === 0) return;
+  askConfirm({
+    title: t('delSelectedTitle'),
+    message: t('delSelectedMsg', { n: n }),
+    okLabel: t('del'),
+    danger: true
+  }).then(function(yes){
+    if (!yes) return;
+    var dep = activeDepot();
+    if (!dep) return;
+    var sel = state.selectedIds;
+    dep.items = dep.items.filter(function(it){ return !sel[it.id]; });
+    syncItemsRef();
+    state.selectedIds = {};
+    persist(); snapshotCurrentData(); // auto-backup snapshot
+    render();                          // renderList self-heals the page number
+    showSaveIndicator();
+    showToast(t('nDeleted', { n: n }), 'success');
+    announce(t('nDeleted', { n: n }));
+    // a11y: the trigger button hides once the selection is gone — move focus to search
+    if (el.btnDelSelected.classList.contains('hidden')){ try { el.inpSearch.focus(); } catch(e){} }
+  });
+}
+
 /* ================= Screen reader announcements ================= */
 function announce(msg, assertive){
   var target = assertive ? el.srAnnouncerAssertive : el.srAnnouncer;
@@ -2248,6 +2468,7 @@ function bindEvents(){
     state.filter = el.inpSearch.value;
     state.page = 1;         // filter changed => back to first page
     state.editingId = null; // editing row may be filtered out
+    if (countSelection() > 0){ state.selectedIds = {}; announce(t('selectionCleared')); } // Fix (batch select): filter change clears selection (announced once, not per keystroke)
     el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
     renderList();
     var shown = state.filter.trim() ? getFilteredItems().length : state.items.length;
@@ -2266,6 +2487,7 @@ function bindEvents(){
     state.filter = '';
     state.page = 1;
     state.editingId = null;
+    if (countSelection() > 0){ state.selectedIds = {}; announce(t('selectionCleared')); } // Fix (batch select)
     el.btnClearSearch.classList.add('hidden');
     renderList();
     el.itemCount.textContent = t('itemCount', { n: state.items.length });
@@ -2315,10 +2537,15 @@ function bindEvents(){
     if (!isNaN(p)){
       state.page = p;
       state.editingId = null; // editing row is on another page
+      state.selectedIds = {}; // Fix (batch select): pagination change clears selection
       renderList();
       announce(t('pageOf', { p: p, t: Math.max(1, Math.ceil(getFilteredItems().length / state.pageSize)) }));
     }
   });
+  el.btnSortName.addEventListener('click', function(){ cycleSort('name'); });
+  el.btnSortLoc.addEventListener('click', function(){ cycleSort('location'); });
+  el.selectAll.addEventListener('change', toggleSelectAll); // Fix (batch select)
+  el.btnDelSelected.addEventListener('click', handleDeleteSelected); // Fix (batch select)
   el.btnLangTr.addEventListener('click', function(){ setLang('tr'); });
   el.btnLangEn.addEventListener('click', function(){ setLang('en'); });
   el.btnExport.addEventListener('click', handleExport);

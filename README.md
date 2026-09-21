@@ -14,6 +14,8 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 - **CRUD**: add products (name + location + amount) via a toggleable add-form, inline row editing (Enter to jump/save, Escape to cancel), delete (with confirmation)
 - **Live search**: filters by name or location, case-insensitive; search box is focused on page load
 - **Pagination**: selectable page size (5/10/15/20, default 5), numbered pages with previous/next; current page highlighted
+- **Sorting**: click the "Product" or "Location" column headers to cycle ascending → descending → insertion order; indicators (↑/↓/↕) show the state; sort resets when switching depots and persists across searches
+- **Batch selection**: row checkboxes plus a "select all" header checkbox (current page only); a "Delete selected (N)" button with a confirmation modal appears while rows are checked; the selection is cleared on search, depot switch and page change
 - **Duplicate protection**: while typing a product name in Add mode, matching products are listed under the input; exact duplicates (same name + location) are blocked with an alert; same name at a different location asks for confirmation
 - **Missing location check**: adding without a location asks whether to continue anyway
 - **Smart inputs**: first letters of name/location auto-capitalize; pasted or edited values are left untouched
