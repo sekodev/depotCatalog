@@ -1316,7 +1316,8 @@ function renderList(){
     row.setAttribute('data-id', String(it.id)); // a11y: enables focus return after inline save/cancel
     row.appendChild(makeCheckCell(it)); // Fix (batch select): leading checkbox
     row.appendChild(makeCell(it.name, 'name'));
-    row.appendChild(makeCell(it.location, 'loc'));
+    // Fix (dash for empty location): display-only placeholder; storage keeps ''
+    row.appendChild(makeCell(it.location || '-', 'loc'));
     // Fix (Phase 4): Amount cell with sr-only prefix so SR users hear "Amount: 3"
     var amtCell = document.createElement('div');
     amtCell.className = 'amount';
@@ -2295,6 +2296,9 @@ function cycleSort(key){
   }
   state.page = 1;         // sort change resets pagination
   state.editingId = null; // the editing row may sit on another page after reordering
+  // Fix (sort clears selection): consistent with search/depot/pagination clears;
+  // no redundant "selection cleared" announcement — the sort announcement below suffices
+  state.selectedIds = {};
   updateSortHeaders();
   renderList();
   if (state.sort.key === null){
