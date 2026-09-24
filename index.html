@@ -615,9 +615,10 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Export to CSV" (audit #6) -->
       <button type="button" id="btnExport" class="btn btn-secondary"><span aria-hidden="true">⬇&nbsp;</span><span id="lblExport"></span></button>
       <!-- Fix (batch select): visible only while rows are selected; .hidden = display:none => not tab-reachable -->
-      <button type="button" id="btnDelSelected" class="btn btn-danger hidden"></button>
-      <!-- Fix (bulk edit): same visibility rules as "Delete selected" (1+ rows selected) -->
-      <button type="button" id="btnEditSelected" class="btn btn-secondary hidden"></button>
+      <!-- Fix (bulk icons): same icons as the inline row actions (✏️/🗑️), emoji is
+           aria-hidden; the accessible name comes from aria-label/title (updated live) -->
+      <button type="button" id="btnDelSelected" class="btn btn-danger hidden" aria-label="" title=""><span aria-hidden="true">🗑️</span> (<span id="delSelCount"></span>)</button>
+      <button type="button" id="btnEditSelected" class="btn btn-secondary hidden" aria-label="" title=""><span aria-hidden="true">✏️</span> (<span id="editSelCount"></span>)</button>
     </div>
     <div class="center-row">
       <span id="itemCount" class="count"></span>
@@ -888,7 +889,7 @@ var el = {};
  'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
  'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
  'srAnnouncer','srAnnouncerAssertive','langSwitch','stockListTitle','lblImportFile',
- 'inpAmount','lblAmount','amountError','colAmount','selectAll','btnDelSelected',
+ 'inpAmount','lblAmount','amountError','colAmount','selectAll','btnDelSelected','delSelCount','editSelCount',
  /* Fix (bulk edit): three-step bulk edit modal elements */
  'btnEditSelected','bulkOverlay1','bulkTitle1','bulkHint1','bulkChkName','bulkLblName','bulkInpName',
  'bulkChkLoc','bulkLblLoc','bulkInpLoc','bulkChkAmount','bulkLblAmount','bulkInpAmount',
@@ -2426,14 +2427,23 @@ function updateSelectAllState(vis){
   el.selectAll.indeterminate = (selCount > 0 && selCount < vis.length); // mixed state, exposed to AT via the IDL property
 }
 function updateDeleteSelectedBtn(){
-  /* Fix (bulk edit): "Edit selected" mirrors "Delete selected" visibility and
-     carries the live count. Both are display:none at count 0, so neither is
+  /* Fix (bulk edit) + Fix (bulk icons): both batch buttons show the inline
+     row-action icon (✏️/🗑️, aria-hidden) plus the live count "(N)" — no words.
+     The accessible name is a descriptive aria-label that doubles as the title
+     tooltip and updates with the count (also refreshed on language switch via
+     render → syncBatchUI). Both are display:none at count 0, so neither is
      tab-reachable — the hidden-state requirement needs no extra code. */
   var n = countSelection();
   if (n > 0){
-    el.btnDelSelected.textContent = t('delSelectedCount', { n: n });
+    el.delSelCount.textContent = String(n);
+    el.editSelCount.textContent = String(n);
+    var delLbl = t('bulkDeleteSelected', { count: n });
+    var editLbl = t('bulkEditSelected', { count: n });
+    el.btnDelSelected.setAttribute('aria-label', delLbl);
+    el.btnDelSelected.title = delLbl;
+    el.btnEditSelected.setAttribute('aria-label', editLbl);
+    el.btnEditSelected.title = editLbl;
     el.btnDelSelected.classList.remove('hidden');
-    el.btnEditSelected.textContent = t('bulkEditCount', { n: n });
     el.btnEditSelected.classList.remove('hidden');
   } else {
     el.btnDelSelected.classList.add('hidden');
