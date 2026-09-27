@@ -6,6 +6,55 @@
 <meta name="description" content="Depo Kataloğu / Depot Catalog - offline single-file app">
 <title>Depot Catalog</title>
 <link rel="icon" type="image/png" href="icon.png">
+<!-- Fix (favicon on load): build the active depot's emoji favicon BEFORE first paint,
+     so refresh/first load shows it too. dcSetEmojiFavicon is the shared helper the main
+     app reuses; everything is try/catch'd so any failure silently leaves icon.png. -->
+<script>
+(function(){
+  function dcSetEmojiFavicon(emoji){
+    try {
+      var old = document.querySelectorAll('link[rel="icon"]');
+      if (!old.length) return false;
+      var c = document.createElement('canvas');
+      c.width = 64; c.height = 64;
+      var ctx = c.getContext('2d');
+      if (!ctx) return false; // no canvas => static icon.png stays
+      ctx.clearRect(0, 0, 64, 64);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '52px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+      ctx.fillText(emoji, 32, 35);
+      var url = c.toDataURL('image/png');
+      if (!url || url.indexOf('data:image/png') !== 0) return false;
+      // REPLACE the link element(s): mutating href alone is unreliable across browsers
+      for (var i = 0; i < old.length; i++){
+        if (old[i].parentNode) old[i].parentNode.removeChild(old[i]);
+      }
+      var nl = document.createElement('link');
+      nl.setAttribute('rel', 'icon');
+      nl.setAttribute('type', 'image/png');
+      nl.setAttribute('href', url);
+      document.head.appendChild(nl);
+      window.__dcFaviconEmoji = emoji; // last successful draw (shared with the main app)
+      return true;
+    } catch(e){ return false; }
+  }
+  window.dcSetEmojiFavicon = dcSetEmojiFavicon;
+  try {
+    var emoji = '📦'; // fallback
+    var raw = localStorage.getItem('depotCatalog.data.v2');
+    if (raw){
+      var d = JSON.parse(raw);
+      if (d && typeof d.activeDepotId === 'number'){
+        var icons = (d.depotIcons && typeof d.depotIcons === 'object') ? d.depotIcons : {};
+        var v = icons[d.activeDepotId];
+        if (typeof v === 'string' && v) emoji = v;
+      }
+    }
+    dcSetEmojiFavicon(emoji);
+  } catch(e){ /* static icon.png stays */ }
+})();
+</script>
 <link rel="apple-touch-icon" href="icon.png">
 <script>
 /* Apply the saved (or system) theme before first paint to avoid a flash */
@@ -344,7 +393,25 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   position:relative;display:flex;align-items:center;gap:.4rem;
   min-width:0;font-size:1.35rem;margin:0;
 }
-.app-icon{flex:none}
+/* Fix (depot icon picker): the app icon became its own clickable button */
+.app-icon-btn{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:2.15rem;height:2.15rem;padding:0;border:1px solid transparent;border-radius:8px;
+  background:none;color:inherit;cursor:pointer;font-size:1.35rem;line-height:1;font-family:inherit;
+}
+.app-icon-btn:hover{background:var(--bg);border-color:var(--border)}
+.app-icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Icon picker: 4 columns x 5 rows of preset emoji */
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .9rem}
+.icon-grid .icon-pick{
+  font-size:1.5rem;line-height:1;padding:.5rem 0;cursor:pointer;font-family:inherit;
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+}
+.icon-grid .icon-pick:hover{border-color:var(--accent)}
+.icon-grid .icon-pick:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* applied icon = subtle outline; pending selection = strong highlight (Fix: save/cancel) */
+.icon-grid .icon-pick.applied{border-color:var(--muted)}
+.icon-grid .icon-pick.selected{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface)}
 .depot-select{
   display:inline-flex;align-items:center;gap:.4rem;min-width:0;
   background:none;border:none;color:var(--text);cursor:pointer;
@@ -548,7 +615,9 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 
   <header>
     <h1 class="title-area">
-      <span class="app-icon" aria-hidden="true">📦</span>
+      <!-- Fix (depot icon picker): the app icon is now its own clickable button
+           (opens the picker); the depot name button keeps the dropdown behavior -->
+      <button type="button" id="btnDepotIcon" class="app-icon-btn" aria-label=""><span id="depotIconEmoji" aria-hidden="true">📦</span></button>
       <span class="depot-select-wrap">
         <button type="button" id="depotSelect" class="depot-select" aria-haspopup="listbox" aria-expanded="false" aria-label="">
           <span id="depotSelectName"></span>
@@ -789,6 +858,19 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   </div>
 </div>
 
+<!-- Depot icon picker (Fix: depot icon picker) -->
+<div class="overlay hidden" id="iconPickerOverlay">
+  <div class="modal icon-picker" role="dialog" aria-modal="true" aria-labelledby="iconPickerTitle">
+    <h2 id="iconPickerTitle"></h2>
+    <div id="iconGrid" class="icon-grid" role="group" aria-label=""></div>
+    <div class="modal-actions">
+      <!-- Fix (icon picker save/cancel): pending selection is committed by Save -->
+      <button type="button" id="iconPickerCancel" class="btn btn-secondary"></button>
+      <button type="button" id="iconPickerSave" class="btn btn-primary"></button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" aria-hidden="true"></div>
 <div id="srAnnouncer" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 <div id="srAnnouncerAssertive" role="alert" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
@@ -861,6 +943,9 @@ var state = {
   nextDepotId: 1,
   nextItemId: 1,
   items: [],           // LIVE alias of the active depot's items (kept in sync)
+  /* Fix (depot icon picker): icons live in a SEPARATE map (id -> emoji), never on the
+     depot objects; depots without a custom icon are simply absent (📦 fallback). */
+  depotIcons: {},
   filter: '',
   sort: { key: null, dir: null }, // Fix (sortable columns): UI state only — not persisted; reset on depot switch
   selectedIds: {}, // Fix (batch select): page-scoped selection map (id -> true); not persisted
@@ -909,7 +994,9 @@ var el = {};
  'bulkChkLoc','bulkLblLoc','bulkInpLoc','bulkChkAmount','bulkLblAmount','bulkInpAmount',
  'bulkErr1','bulkWarnLoc','bulkCancel1','bulkContinue',
  'bulkOverlay2','bulkTitle2','bulkP2','bulkChangesList','bulkP3','bulkMergeList','bulkErr2','bulkCancel2','bulkApply',
- 'bulkOverlay3','bulkTitle3','bulkP4','bulkReportList','bulkClose3'
+ 'bulkOverlay3','bulkTitle3','bulkP4','bulkReportList','bulkClose3',
+ /* Fix (depot icon picker) */
+ 'btnDepotIcon','depotIconEmoji','iconPickerOverlay','iconPickerTitle','iconGrid','iconPickerSave','iconPickerCancel'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -922,7 +1009,8 @@ function persist(){
     nextDepotId: state.nextDepotId,
     nextItemId: state.nextItemId,
     activeDepotId: state.activeDepotId,
-    depots: state.depots
+    depots: state.depots,
+    depotIcons: state.depotIcons // Fix (depot icon picker): separate id -> emoji map
   });
   try {
     localStorage.setItem(LS_DATA, payload);
@@ -979,13 +1067,24 @@ function loadState(){
         });
         var active = (typeof d.activeDepotId === 'number' && findDepotIn(depots, d.activeDepotId))
           ? d.activeDepotId : (depots.length ? depots[0].id : null);
+        /* Fix (depot icon picker): sanitize the icon map; missing/invalid entries are
+           dropped (old data without the map simply yields {}) */
+        var icons = {};
+        if (d.depotIcons && typeof d.depotIcons === 'object'){
+          Object.keys(d.depotIcons).forEach(function(k){
+            var v = d.depotIcons[k];
+            var idn = parseInt(k, 10);
+            if (isFinite(idn) && typeof v === 'string' && v.length > 0 && v.length <= 8) icons[idn] = v;
+          });
+        }
         return {
           ok: true,
           data: {
             depots: depots,
             activeDepotId: active,
             nextDepotId: (typeof d.nextDepotId === 'number' && d.nextDepotId > maxDepot) ? d.nextDepotId : maxDepot + 1,
-            nextItemId: nextItemId
+            nextItemId: nextItemId,
+            depotIcons: icons
           }
         };
       }
@@ -1020,7 +1119,8 @@ function loadState(){
             depots: [{ id: 1, name: depotName, items: items }],
             activeDepotId: 1,
             nextDepotId: 2,
-            nextItemId: nextItemId
+            nextItemId: nextItemId,
+            depotIcons: {} // Fix (depot icon picker): legacy data has no icons
           }
         };
       }
@@ -1071,7 +1171,8 @@ function snapshotCurrentData(){
       nextDepotId: state.nextDepotId,
       nextItemId: state.nextItemId,
       activeDepotId: state.activeDepotId,
-      depots: state.depots
+      depots: state.depots,
+      depotIcons: state.depotIcons // Fix (depot icon picker): snapshots carry the icon map too
     }
   };
   var snaps = readSnaps();
@@ -1258,6 +1359,7 @@ function applyStaticText(){
   el.depotSelectName.textContent = dep ? dep.name : '\u2014';
   el.depotSelect.setAttribute('aria-label', t('selectAria'));
   el.depotMenu.setAttribute('aria-label', t('selectAria'));
+  syncDepotIconUI(); // Fix (depot icon picker): icon + its aria-label (kept language-aware)
   if (depotMenuIsOpen()) renderDepotMenu(); // refresh labels while open
   // No depot => hide item-related UI until one is created
   var hasDepot = !!dep;
@@ -2207,6 +2309,7 @@ function selectDepot(id){
   persist(); snapshotCurrentData();
   showSaveIndicator();
   render();
+  applyFavicon(); // Fix (depot icon picker): favicon follows the active depot
   el.inpSearch.focus();
   announce(t('nowViewing', { name: dep ? dep.name : '' }));
 }
@@ -2226,6 +2329,7 @@ function openAddDepotModal(){
     hideImportReport();
     persist(); snapshotCurrentData();
     render();
+    applyFavicon(); // Fix (favicon on load): new depot became active (may reset the icon to 📦)
     showSaveIndicator();
     showToast(t('depotAdded'), 'success');
     announce(t('depotAdded'));
@@ -2274,12 +2378,171 @@ function openDeleteDepot(id){
     el.inpSearch.value = '';
     el.btnClearSearch.classList.add('hidden');
     hideImportReport();
+    delete state.depotIcons[id]; // Fix (depot icon picker): drop the icon with its depot
     persist(); snapshotCurrentData();
     render();
+    applyFavicon(); // Fix (depot icon picker): active depot may have changed
     showSaveIndicator();
     showToast(t('depotDeleted'), 'success');
     announce(t('depotDeleted'));
   });
+}
+
+/* ================= Depot icon picker (Fix: depot icon picker) ================= */
+/* Icons live in state.depotIcons (id -> emoji); a depot with no entry uses the 📦
+   fallback. Selecting 📦 REMOVES the entry (keeps the map clean — documented choice).
+   Keys are unaffected by switches; deleting a depot drops its entry, and the favicon
+   is regenerated from the active depot's emoji (canvas -> data URL). */
+var DEPOT_EMOJIS = ['📦','📚','💊','🧰','🔧','👕','🧸','🎨','📎','💻','📱','🎮','🍎','🍳','🧴','🪴','🪑','🚗','🏷️','📁'];
+var ICON_NAME_KEYS = {
+  '📦':'icoPkg','📚':'icoBooks','💊':'icoMedicine','🧰':'icoToolbox','🔧':'icoTools',
+  '👕':'icoClothing','🧸':'icoToys','🎨':'icoArt','📎':'icoOffice','💻':'icoElectronics',
+  '📱':'icoPhones','🎮':'icoGaming','🍎':'icoFood','🍳':'icoKitchen','🧴':'icoToiletries',
+  '🪴':'icoPlants','🪑':'icoFurniture','🚗':'icoAuto','🏷️':'icoMisc','📁':'icoDocuments'
+};
+var DEFAULT_DEPOT_ICON = '📦';
+var iconPickerReturnFocus = null;
+var iconPickerPending = null; // Fix (icon picker save/cancel): pending selection, committed by Save only
+function depotIconOf(id){
+  return (id != null && state.depotIcons && state.depotIcons[id]) ? state.depotIcons[id] : DEFAULT_DEPOT_ICON;
+}
+function iconName(emoji){
+  var key = ICON_NAME_KEYS[emoji];
+  return key ? t(key) : emoji;
+}
+function syncDepotIconUI(){
+  if (el.depotIconEmoji) el.depotIconEmoji.textContent = depotIconOf(state.activeDepotId);
+  if (el.btnDepotIcon) el.btnDepotIcon.setAttribute('aria-label', t('iconButtonLabel'));
+}
+/* Fix (favicon on load): generation lives in the shared HEAD helper
+   (window.dcSetEmojiFavicon, defined right after the favicon link); this wrapper only
+   tracks the last successfully drawn emoji so unchanged updates are skipped (§3).
+   On helper failure the static icon.png stays and the next trigger retries. */
+var lastFaviconEmoji = (typeof window.__dcFaviconEmoji === 'string') ? window.__dcFaviconEmoji : null;
+function applyFavicon(){
+  var emoji = depotIconOf(state.activeDepotId);
+  if (emoji === lastFaviconEmoji) return; // skip: unchanged since the last successful draw
+  if (typeof window.dcSetEmojiFavicon === 'function' && window.dcSetEmojiFavicon(emoji)){
+    lastFaviconEmoji = emoji; // helper replaced the link and set window.__dcFaviconEmoji
+  }
+}
+function renderIconGrid(){
+  /* Applied icon keeps the subtle .applied outline; the PENDING choice gets the
+     strong .selected highlight. Both can be the same tile when pending === applied. */
+  el.iconGrid.innerHTML = '';
+  var applied = depotIconOf(state.activeDepotId);
+  var pending = iconPickerPending;
+  DEPOT_EMOJIS.forEach(function(em, idx){
+    var b = document.createElement('button');
+    b.type = 'button';
+    var isSel = (em === pending);
+    b.className = 'icon-pick' + (em === applied ? ' applied' : '') + (isSel ? ' selected' : '');
+    b.textContent = em;
+    b.setAttribute('data-idx', String(idx));
+    var nm = iconName(em);
+    b.setAttribute('aria-label', nm + (em === applied ? t('iconCurrentSuffix') : '') + (isSel ? t('iconSelectedSuffix') : ''));
+    b.setAttribute('aria-pressed', isSel ? 'true' : 'false'); // pending state for screen readers
+    if (em === applied) b.setAttribute('aria-current', 'true'); // applied state
+    b.addEventListener('click', function(){ selectPendingIcon(em); });
+    el.iconGrid.appendChild(b);
+  });
+}
+function selectPendingIcon(emoji){
+  /* Fix (icon picker save/cancel): clicking a tile only marks it as pending —
+     the modal stays open so the user can compare options before Save. */
+  iconPickerPending = emoji;
+  // Update tiles IN PLACE so keyboard focus stays on the clicked button
+  var tiles = el.iconGrid.querySelectorAll('.icon-pick');
+  var applied = depotIconOf(state.activeDepotId);
+  for (var i = 0; i < tiles.length; i++){
+    var em = tiles[i].textContent;
+    var isSel = (em === emoji);
+    tiles[i].classList.toggle('selected', isSel);
+    tiles[i].setAttribute('aria-pressed', isSel ? 'true' : 'false');
+    var nm = iconName(em);
+    tiles[i].setAttribute('aria-label',
+      nm + (em === applied ? t('iconCurrentSuffix') : '') + (isSel ? t('iconSelectedSuffix') : ''));
+  }
+  announce(t('iconSelectedAnnouncement', { emojiName: iconName(emoji) })); // polite
+}
+function savePendingIcon(){
+  var emoji = (iconPickerPending != null) ? iconPickerPending : depotIconOf(state.activeDepotId);
+  var id = state.activeDepotId;
+  if (id == null){ closeIconPicker(); return; }
+  /* Save is ALWAYS enabled (documented choice): when pending === applied it simply
+     closes without writing — no redundant snapshot or "changed" announcement. */
+  if (emoji !== depotIconOf(id)){
+    if (emoji === DEFAULT_DEPOT_ICON){
+      delete state.depotIcons[id]; // 📦 removes the entry (fallback applies)
+    } else {
+      state.depotIcons[id] = emoji;
+    }
+    persist();
+    snapshotCurrentData(); // auto-backup snapshot
+    syncDepotIconUI();     // title icon button updates
+    applyFavicon();        // dynamic favicon updates
+    showSaveIndicator();
+    announce(t('iconChanged', { emojiName: iconName(emoji) }));
+  }
+  closeIconPicker();
+}
+function openIconPicker(){
+  el.iconPickerTitle.textContent = t('iconPickerTitle');
+  el.iconPickerSave.textContent = t('iconPickerSave');
+  el.iconPickerCancel.textContent = t('iconPickerCancel');
+  el.iconGrid.setAttribute('aria-label', t('iconPickerTitle'));
+  iconPickerPending = depotIconOf(state.activeDepotId); // pending starts equal to the applied icon
+  renderIconGrid();
+  iconPickerReturnFocus = document.activeElement;
+  el.iconPickerOverlay.classList.remove('hidden');
+  var target = el.iconGrid.querySelector('.icon-pick.selected') || el.iconGrid.querySelector('.icon-pick');
+  if (target){ try { target.focus(); } catch(e){} } // a11y: focus the pending emoji (or the first)
+}
+function closeIconPicker(){
+  el.iconPickerOverlay.classList.add('hidden');
+  iconPickerPending = null; // Fix (icon picker save/cancel): Cancel/Escape discard the pending choice
+  /* Fix: the picker is always opened from the icon button, so focus returns there
+     deterministically (spec §6); the captured element is only a fallback. */
+  var back = el.btnDepotIcon || iconPickerReturnFocus;
+  iconPickerReturnFocus = null;
+  if (back && back.focus){ try { back.focus(); } catch(e){} }
+}
+function chooseDepotIcon(emoji){
+  /* Superseded by selectPendingIcon + savePendingIcon (Fix: icon picker save/cancel);
+     kept as a thin apply helper so the two-phase flow stays the only entry point. */
+  iconPickerPending = emoji;
+  savePendingIcon();
+}
+function iconPickerKeydown(ev){
+  if (ev.key === 'Tab'){
+    // Focus trap: Tab cycles through the 20 emoji buttons and Close, in DOM order
+    var f = el.iconPickerOverlay.querySelectorAll('button:not([disabled]):not(.hidden)');
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (ev.shiftKey){
+      if (document.activeElement === first || document.activeElement === el.iconPickerOverlay){
+        ev.preventDefault(); last.focus();
+      }
+    } else if (document.activeElement === last){
+      ev.preventDefault(); first.focus();
+    }
+    return;
+  }
+  // Optional enhancement: arrow keys move between the 4-column grid cells
+  var cols = 4, k = ev.key;
+  if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+  var ae = document.activeElement;
+  var idx = parseInt((ae && ae.getAttribute) ? (ae.getAttribute('data-idx') || '-1') : '-1', 10);
+  if (idx < 0) return;
+  var next = idx;
+  if (k === 'ArrowLeft') next = idx - 1;
+  else if (k === 'ArrowRight') next = idx + 1;
+  else if (k === 'ArrowUp') next = idx - cols;
+  else next = idx + cols;
+  if (next < 0 || next >= DEPOT_EMOJIS.length) return;
+  ev.preventDefault();
+  var btns = el.iconGrid.querySelectorAll('.icon-pick');
+  if (btns[next]) btns[next].focus();
 }
 
 /* ================= Keyboard shortcuts cheat sheet ================= */
@@ -3075,7 +3338,9 @@ function bindEvents(){
   });
   document.addEventListener('keydown', function(ev){
     if (ev.key === 'Escape'){
-      if (bulkIsOpen()){
+      if (!el.iconPickerOverlay.classList.contains('hidden')){
+        closeIconPicker(); // Fix (depot icon picker): Escape closes, focus returns to the icon button
+      } else if (bulkIsOpen()){
         // Fix (bulk edit): Escape closes whichever bulk step is visible (whole flow)
         if (!el.bulkOverlay1.classList.contains('hidden')) closeBulk1();
         else if (!el.bulkOverlay2.classList.contains('hidden')) closeBulk2();
@@ -3095,6 +3360,14 @@ function bindEvents(){
       }
     }
   });
+  // ---- Depot icon picker (Fix: depot icon picker) ----
+  el.btnDepotIcon.addEventListener('click', openIconPicker);
+  el.iconPickerSave.addEventListener('click', savePendingIcon);   // Fix (save/cancel): commits the pending icon
+  el.iconPickerCancel.addEventListener('click', closeIconPicker); // Fix (save/cancel): discards it
+  el.iconPickerOverlay.addEventListener('click', function(ev){
+    if (ev.target === el.iconPickerOverlay) closeIconPicker(); // backdrop click = Cancel
+  });
+  el.iconPickerOverlay.addEventListener('keydown', iconPickerKeydown); // trap + arrow grid nav
   // ---- Depot selector ----
   el.depotSelect.addEventListener('click', function(){
     if (depotMenuIsOpen()){ closeDepotMenu(); el.depotSelect.focus(); }
@@ -3154,6 +3427,8 @@ function init(){
     state.activeDepotId = loaded.data.activeDepotId;
     state.nextDepotId = loaded.data.nextDepotId;
     state.nextItemId = loaded.data.nextItemId;
+    /* Fix (depot icon picker): old data/snapshots without the map load as {} */
+    state.depotIcons = (loaded.data.depotIcons && typeof loaded.data.depotIcons === 'object') ? loaded.data.depotIcons : {};
     syncItemsRef();
     if (loaded.migrated){
       persist(); snapshotCurrentData(); // write the migrated v2 state immediately
@@ -3173,6 +3448,7 @@ function init(){
   bindEvents();
   applyTheme(currentTheme()); // sync switch state with the active theme
   render();
+  applyFavicon(); // Fix (depot icon picker): favicon from the active depot's emoji on load
   try { el.inpSearch.focus(); } catch(e){} // start typing a search right away
 }
 init();
