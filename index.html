@@ -1432,14 +1432,21 @@ function renderList(){
     btnEdit.type = 'button';
     btnEdit.className = 'icon-btn';
     btnEdit.textContent = '\u270F\uFE0F'; // pencil
-    btnEdit.setAttribute('aria-label', t('editAria', { name: it.name }));
+    /* Fix (row action tooltips): the native title mirrors the accessible name
+       EXACTLY (same string) so mouse and screen reader users read the same wording */
+    var editLbl = t('editAria', { name: it.name });
+    btnEdit.setAttribute('aria-label', editLbl);
+    btnEdit.title = editLbl;
     btnEdit.addEventListener('click', function(){ startEdit(it.id); });
 
     var btnDel = document.createElement('button');
     btnDel.type = 'button';
     btnDel.className = 'icon-btn del';
     btnDel.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
-    btnDel.setAttribute('aria-label', t('delAria', { name: it.name }));
+    /* Fix (row action tooltips): title mirrors the accessible name exactly */
+    var delLbl = t('delAria', { name: it.name });
+    btnDel.setAttribute('aria-label', delLbl);
+    btnDel.title = delLbl;
     btnDel.addEventListener('click', function(){ handleDelete(it.id); });
 
     actions.appendChild(btnEdit);
