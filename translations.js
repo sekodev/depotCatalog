@@ -40,6 +40,8 @@ window.DEPOT_LANGUAGES = [
     strings: {
       docTitle: "Depot Catalog",
       appTitle: "Depot Catalog",
+      appName: "Depot Catalog", // Fix (app name): visible app name for the dynamic title
+      pageTitlePattern: "{depot} - {app}",
       addTitle: "Add New Product",
       editTitle: "Edit Product",
       nameLbl: "Product name",
@@ -292,6 +294,8 @@ window.DEPOT_LANGUAGES = [
     strings: {
       docTitle: "Depo Kataloğu",
       appTitle: "Depo Kataloğu",
+      appName: "Depo Katalog", // Fix (app name): görünen uygulama adı (dinamik başlık için)
+      pageTitlePattern: "{depot} - {app}",
       addTitle: "Yeni Ürün Ekle",
       editTitle: "Ürünü Düzenle",
       nameLbl: "Ürün adı",

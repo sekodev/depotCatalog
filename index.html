@@ -1353,7 +1353,15 @@ function renderSuggestions(){
 /* ================= Rendering ================= */
 function applyStaticText(){
   document.documentElement.lang = state.lang;
-  document.title = t('docTitle');
+  /* Fix (dynamic page title): "{depot} - {app}" in the current language; no active
+     depot (edge case) => app name only. Every title-affecting event (load, depot
+     switch/rename/create/delete-fallback, language change) re-renders through here,
+     so this single update point covers them all. The static <title> in <head> remains
+     the brief pre-run fallback. */
+  var titleDep = activeDepot();
+  document.title = titleDep
+    ? t('pageTitlePattern', { depot: titleDep.name, app: t('appName') })
+    : t('appName');
   // Depot selector
   var dep = activeDepot();
   el.depotSelectName.textContent = dep ? dep.name : '\u2014';
