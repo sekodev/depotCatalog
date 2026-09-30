@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Depo Kataloğu / Depot Catalog - offline single-file app">
+<meta name="description" content="Depo Katalog / Depot Catalog - offline single-file app">
 <title>Depot Catalog</title>
 <link rel="icon" type="image/png" href="icon.png">
 <!-- Fix (favicon on load): build the active depot's emoji favicon BEFORE first paint,
@@ -889,13 +889,16 @@ var MAX_SNAPS = 5;
 
 /* ============ i18n (strings live in external translations.js) ============ */
 var LANGUAGES = window.DEPOT_LANGUAGES;
+/* Bootstrap guard: appName is the sentinel key EVERY language must define. It doubles as
+   the visible app name (dynamic page title), so a broken or missing translations.js is
+   detected without needing a dedicated key. */
 function languagesValid(arr){
   if (!Array.isArray(arr) || arr.length === 0) return false;
   for (var i = 0; i < arr.length; i++){
     var L = arr[i];
     if (!L || typeof L.code !== 'string' || typeof L.label !== 'string' ||
         !L.strings || typeof L.strings !== 'object' ||
-        typeof L.strings.appTitle !== 'string') return false;
+        typeof L.strings.appName !== 'string') return false;
   }
   return true;
 }

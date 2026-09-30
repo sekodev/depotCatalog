@@ -1,4 +1,4 @@
-# Depot Katalog / Stock Catalog
+# Depo Katalog / Depot Catalog
 
 A dependency-free static web app (`index.html` + `translations.js`) for cataloging products. All data stays in your browser — nothing is sent to any server, and it works fully offline.
 
@@ -45,12 +45,13 @@ Open `translations.js` in any text editor. Each language is one block:
   code: "en",              // short code, used internally
   label: "English",        // shown in the UI
   strings: {
-    appTitle: "Stock Catalog",
+    appName: "Depot Catalog",
     // ...one line per text
   }
 }
 ```
 
+- `appName` must exist in **every** block: it is the app name shown in the page title *and* the key the app checks to confirm `translations.js` loaded. Removing it makes the app show `Translation file missing or invalid.` and stay inert.
 - To change a text, edit the value after the `:` (keep the quotes).
 - To add a language (e.g. German), copy an entire `{ ... },` block, paste it inside the `[ ... ]` list, then change `code`, `label` and translate the values.
 - Placeholders like `{name}`, `{cur}`, `{inc}`, `{query}`, `{n}` are filled in automatically — do not remove them or their braces.
