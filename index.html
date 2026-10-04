@@ -194,7 +194,14 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 /* ---------- Stock list ---------- */
 .list-card{padding:0;overflow:hidden}
 .list-head{
-  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr auto;gap:.75rem;align-items:center;
+  /* Fix (header alignment): the Actions header cell is empty, so its `auto` track sized to
+     0 — while a row's Actions cell holds two 44px icon buttons plus a .35rem gap (93.6px).
+     Both grids share one template, but a different last track grew every `fr` column in the
+     header, pushing the Location/Amount/Category headers right of the values below them.
+     Pinning the header's last track to that same width makes all six tracks — and therefore
+     the header text — sit flush left with each column's cells. The empty cell itself renders
+     identically, and mobile redefines .list-head (hiding these cells), so only >720px changes. */
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr 1fr calc(44px * 2 + .35rem);gap:.75rem;align-items:center;
   padding:.6rem 1rem;font-size:.75rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
   border-bottom:1px solid var(--border);
@@ -214,13 +221,16 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 .row.editing .check{flex:none;align-self:center}
 input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 .row{
-  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr auto;gap:.75rem;align-items:center;
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr 1fr auto;gap:.75rem;align-items:center;
   padding:.6rem 1rem;border-bottom:1px solid var(--border);
 }
 .row:last-child{border-bottom:none}
 .row .name{word-break:break-word}
 .row .loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word} /* Fix: line-height:1.2 — identical vertical metrics with Amount; left-aligned (revert) */
 .row .amount{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word} /* Fix (vertical alignment): same mono font + line-height as Location — identical line box; left-aligned (revert) */
+/* Fix (category): Category cell mirrors Location/Amount exactly (same mono font, size,
+   line-height and left alignment) so the three columns line up vertically. */
+.row .category{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word}
 .row .actions{display:flex;gap:.35rem}
 .icon-btn{
   background:none;border:1px solid transparent;border-radius:8px;
@@ -569,7 +579,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   /* Fix (Location alignment): align-items start — all three inputs share the same
      top edge; the reserved error/hint areas hang below the inputs without moving them
      (end-alignment dropped the shorter Location input ~1.28rem lower). */
-  form#productForm{grid-template-columns:2fr 1.5fr 1fr auto;align-items:start}
+  form#productForm{grid-template-columns:2fr 1.5fr 1fr 1fr auto;align-items:start}
   /* Fix (Location alignment): push the submit button down past the label, onto the
      input line (replaces the Phase 5 margin-bottom bottom-alignment hack) */
   .form-actions{margin-top:1.21rem}
@@ -589,12 +599,13 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   .list-head > div:not(.check-head){display:none}
   .row{
     grid-template-columns:auto 1fr auto;
-    grid-template-areas:"check name actions" "check loc actions" "check amount actions";
+    grid-template-areas:"check name actions" "check loc actions" "check amount actions" "check cat actions";
     row-gap:.2rem;padding:.7rem .85rem;
   }
   .row .name{grid-area:name;font-weight:600}
   .row .loc{grid-area:loc}
   .row .amount{grid-area:amount}
+  .row .category{grid-area:cat}
   .row .check{grid-area:check}
   .row .actions{grid-area:actions;flex-direction:column;align-self:center}
   .toolbar{gap:.7rem}
@@ -661,9 +672,9 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   <section class="card list-card">
     <!-- Fix (Phase 3): sr-only h2 for heading navigation; no visual change -->
     <h2 id="stockListTitle" class="sr-only"></h2>
-    <!-- Fix (sortable columns): header row is now interactive for Name/Location sorting.
-         role=row/columnheader + aria-sort carry the state to AT; the two buttons are
-         keyboard-operable (Enter/Space). Amount stays a plain header. -->
+    <!-- Fix (sortable columns): header row is interactive for Name/Location/Category
+         sorting. role=row/columnheader + aria-sort carry the state to AT; the buttons
+         are keyboard-operable (Enter/Space). Amount stays a plain header. -->
     <div class="list-head" role="row">
       <!-- Fix (batch select): select-all column (scoped to the current page) -->
       <div class="check-head" role="columnheader"><input type="checkbox" id="selectAll" aria-label=""></div>
@@ -674,6 +685,10 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
         <button type="button" id="btnSortLoc" class="sort-btn" aria-label=""></button>
       </div>
       <div role="columnheader" id="colAmountHead"><span id="colAmount"></span></div>
+      <!-- Fix (category): Category header is sortable (same 3-state cycle as Name/Location) -->
+      <div id="colCategoryHead" role="columnheader" aria-sort="none">
+        <button type="button" id="btnSortCat" class="sort-btn" aria-label=""></button>
+      </div>
       <div role="columnheader"><span></span></div>
     </div>
     <!-- a11y: list semantics (safer than table roles: inline-edit inputs inside rows
@@ -747,7 +762,9 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <div class="field">
         <label for="inpLoc" id="lblLoc"></label>
         <input type="text" id="inpLoc" maxlength="120" autocomplete="off" aria-describedby="hintAddJump">
-        <p id="hintAddJump" class="hint-inline hidden"></p>
+        <!-- Fix (hint placement): moved out of this field — it now lives on its own line
+             directly above the Import from CSV button (see .import-area below).
+             aria-describedby on #inpLoc resolves by id wherever the element sits. -->
       </div>
       <!-- Fix (Phase 4): Amount field — visible label, number input, inline error linked via aria-describedby -->
       <div class="field">
@@ -755,11 +772,21 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
         <input type="number" id="inpAmount" min="0" step="1" value="1" autocomplete="off" aria-describedby="amountError">
         <p id="amountError" class="err" role="alert"></p>
       </div>
+      <!-- Fix (category): free-text Category field. Empty is valid — no validation and
+           no reserved error area; Enter here submits the form (focus chain ends here). -->
+      <div class="field">
+        <label for="inpCategory" id="lblCategory"></label>
+        <input type="text" id="inpCategory" maxlength="120" autocomplete="off">
+      </div>
       <div class="form-actions field">
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
       </div>
     </form>
     <div class="import-area">
+      <!-- Fix (hint placement): the Enter-key tip gets its own full-width line directly above
+           the Import button instead of sitting under the narrow Location input, where it
+           wrapped and crowded this area. Keeps .hint-inline (muted, small) styling. -->
+      <p id="hintAddJump" class="hint-inline hidden"></p>
       <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Import from CSV" (audit #6) -->
       <button type="button" id="btnImportTrigger" class="btn btn-secondary"><span aria-hidden="true">⬆&nbsp;</span><span id="lblImport"></span></button>
       <!-- Fix (Phase 3): sr-only label for the CSV file input (spec §1) -->
@@ -821,8 +848,16 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <label for="bulkChkAmount" id="bulkLblAmount"></label>
       <input type="number" id="bulkInpAmount" min="0" step="1" autocomplete="off" aria-labelledby="bulkLblAmount" disabled>
     </div>
+    <!-- Fix (category): 4th bulk field — same checkbox + label + input row pattern;
+         the label (for=) names the checkbox AND the input (aria-labelledby) -->
+    <div class="bulk-row">
+      <input type="checkbox" id="bulkChkCategory">
+      <label for="bulkChkCategory" id="bulkLblCategory"></label>
+      <input type="text" id="bulkInpCategory" maxlength="120" autocomplete="off" aria-labelledby="bulkLblCategory" disabled>
+    </div>
     <p id="bulkErr1" class="err" role="alert"></p>
     <p id="bulkWarnLoc" class="bulk-warn hidden"></p>
+    <p id="bulkWarnCat" class="bulk-warn hidden"></p>
     <div class="modal-actions">
       <button type="button" id="bulkCancel1" class="btn btn-secondary"></button>
       <button type="button" id="bulkContinue" class="btn btn-primary"></button>
@@ -941,7 +976,7 @@ function t(key, params){
 
 /* ================= App state ================= */
 var state = {
-  depots: [],          // [{id, name, items:[{id,name,location}]}]
+  depots: [],          // [{id, name, items:[{id,name,location,amount,category}]}]
   activeDepotId: null,
   nextDepotId: 1,
   nextItemId: 1,
@@ -981,7 +1016,8 @@ function $(id){ return document.getElementById(id); }
 var el = {};
 ['btnLangTr','btnLangEn','banner','formTitle','productForm',
  'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit',
- 'inpSearch','btnSortName','btnSortLoc','colNameHead','colLocHead','listBody','itemCount','btnExport','lblExport','listFoot',
+ 'inpCategory','lblCategory',
+ 'inpSearch','btnSortName','btnSortLoc','btnSortCat','colNameHead','colLocHead','colCategoryHead','listBody','itemCount','btnExport','lblExport','listFoot',
  'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
  'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
  'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
@@ -995,7 +1031,8 @@ var el = {};
  /* Fix (bulk edit): three-step bulk edit modal elements */
  'btnEditSelected','bulkOverlay1','bulkTitle1','bulkHint1','bulkChkName','bulkLblName','bulkInpName',
  'bulkChkLoc','bulkLblLoc','bulkInpLoc','bulkChkAmount','bulkLblAmount','bulkInpAmount',
- 'bulkErr1','bulkWarnLoc','bulkCancel1','bulkContinue',
+ 'bulkChkCategory','bulkLblCategory','bulkInpCategory',
+ 'bulkErr1','bulkWarnLoc','bulkWarnCat','bulkCancel1','bulkContinue',
  'bulkOverlay2','bulkTitle2','bulkP2','bulkChangesList','bulkP3','bulkMergeList','bulkErr2','bulkCancel2','bulkApply',
  'bulkOverlay3','bulkTitle3','bulkP4','bulkReportList','bulkClose3',
  /* Fix (depot icon picker) */
@@ -1053,7 +1090,10 @@ function loadState(){
                 /* Fix (Phase 4): migrate missing/invalid amount to 1 — silent, no
                    announcements (loadState runs before any UI). Format stays v2:
                    amount is an additive, optional field. */
-                amount: (typeof it.amount === 'number' && isFinite(it.amount) && it.amount >= 0 && it.amount % 1 === 0) ? it.amount : 1
+                amount: (typeof it.amount === 'number' && isFinite(it.amount) && it.amount >= 0 && it.amount % 1 === 0) ? it.amount : 1,
+                /* Fix (category): migrate missing/invalid category to '' — silent,
+                   additive optional field (same pattern as amount) */
+                category: (typeof it.category === 'string') ? String(it.category).slice(0, 200) : ''
               };
               if (rec.id !== null && rec.id > maxItem) maxItem = rec.id;
               items.push(rec);
@@ -1107,7 +1147,8 @@ function loadState(){
             id: (typeof oit.id === 'number' && isFinite(oit.id)) ? oit.id : null,
             name: String(oit.name).slice(0, 200),
             location: (typeof oit.location === 'string') ? String(oit.location).slice(0, 200) : '',
-            amount: 1 // Fix (Phase 4): legacy items had no amount — default silently
+            amount: 1, // Fix (Phase 4): legacy items had no amount — default silently
+            category: '' // Fix (category): legacy items had no category — default silently
           };
           if (orec.id !== null && orec.id > maxId) maxId = orec.id;
           items.push(orec);
@@ -1156,8 +1197,30 @@ var LS_SNAPS = 'depotCatalog.snaps.v1';
 function readSnaps(){
   try {
     var arr = JSON.parse(localStorage.getItem(LS_SNAPS));
-    return Array.isArray(arr) ? arr : [];
+    if (!Array.isArray(arr)) return [];
+    /* Fix (category): migrate snapshots on read so an old snapshot (items without a
+       `category` field) is upgraded to category:"" before any consumer sees it.
+       Silent — no announcements, no writes here. */
+    normalizeSnapshots(arr);
+    return arr;
   } catch(e){ return []; }
+}
+/* Fix (category): in-place, defensive normalization of a snapshot array. Anything that
+   is not a string (missing key, null, number) becomes '' — the same rule loadState uses. */
+function normalizeSnapshots(snaps){
+  for (var s = 0; s < snaps.length; s++){
+    var entry = snaps[s];
+    var dps = (entry && entry.data && Array.isArray(entry.data.depots)) ? entry.data.depots : null;
+    if (!dps) continue;
+    for (var d = 0; d < dps.length; d++){
+      var items = (dps[d] && Array.isArray(dps[d].items)) ? dps[d].items : null;
+      if (!items) continue;
+      for (var i = 0; i < items.length; i++){
+        if (items[i] && typeof items[i].category !== 'string') items[i].category = '';
+      }
+    }
+  }
+  return snaps;
 }
 function writeSnaps(snaps){
   try {
@@ -1411,12 +1474,14 @@ function applyStaticText(){
   el.pagination.setAttribute('aria-label', t('paginationAria')); // Fix (Phase 3): nav keeps its label even while hidden (renderPagination refreshes it when shown)
   el.lblAmount.textContent = t('amount'); // Fix (Phase 4): Amount label + column header
   el.colAmount.textContent = t('amount');
+  el.lblCategory.textContent = t('category'); // Fix (category): Add-form field label
   el.selectAll.setAttribute('aria-label', t('selectAllAria')); // Fix (batch select)
   /* Fix (bulk edit): modal field labels — each label names BOTH its checkbox (for=)
      and its input (aria-labelledby), satisfying "all inputs must have labels" */
   el.bulkLblName.textContent = t('bulkFieldName');
   el.bulkLblLoc.textContent = t('locLbl');
   el.bulkLblAmount.textContent = t('amount');
+  el.bulkLblCategory.textContent = t('category'); // Fix (category): reuses the field-label key, like locLbl/amount
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1437,8 +1502,11 @@ function getFilteredItems(){
   var list = state.items.slice();
   if (q){
     list = list.filter(function(it){
+      /* Fix (category): search matches name, location AND category. Amount stays
+         non-searchable (numbers are not part of the text filter). */
       return it.name.toLowerCase().indexOf(q) !== -1 ||
-             it.location.toLowerCase().indexOf(q) !== -1;
+             it.location.toLowerCase().indexOf(q) !== -1 ||
+             it.category.toLowerCase().indexOf(q) !== -1;
     });
   }
   /* Fix (sortable columns): apply the active sort AFTER filtering (never bypasses
@@ -1537,6 +1605,9 @@ function renderList(){
     amtCell.appendChild(amtLbl);
     amtCell.appendChild(document.createTextNode(String(it.amount)));
     row.appendChild(amtCell);
+    // Fix (category): Category cell. Empty category shows "-" (display only; the
+    // stored value stays ''). Same rule as an empty Location.
+    row.appendChild(makeCell(it.category || '-', 'category'));
 
     var actions = document.createElement('div');
     actions.className = 'actions';
@@ -1638,6 +1709,7 @@ function resetForm(){
   el.inpName.value = '';
   el.inpLoc.value = '';
   el.inpAmount.value = '1'; // Fix (Phase 4): Amount resets to default 1 (serial entry)
+  el.inpCategory.value = ''; // Fix (category): Category resets to empty (serial entry)
   el.nameError.textContent = ''; // Fix (Phase 5): clear in place — reserved area stays
   el.amountError.textContent = '';
   hideSuggestions();
@@ -1677,9 +1749,11 @@ async function saveInlineEdit(){
   var nameInput = document.querySelector('#listBody .row.editing .edit-name');
   var locInput = document.querySelector('#listBody .row.editing .edit-loc');
   var amountInput = document.querySelector('#listBody .row.editing .edit-amount');
-  if (!it || !nameInput || !locInput || !amountInput){ state.editingId = null; renderList(); return; }
+  var catInput = document.querySelector('#listBody .row.editing .edit-category'); // Fix (category)
+  if (!it || !nameInput || !locInput || !amountInput || !catInput){ state.editingId = null; renderList(); return; }
   var name = nameInput.value.trim();
   var location = locInput.value.trim();
+  var category = catInput.value.trim(); // Fix (category): free text, empty allowed
   if (!name){ nameInput.focus(); return; } // empty name: stay in edit mode
   var amountRes = parseAmount(amountInput.value);
   if (!amountRes.ok){
@@ -1733,6 +1807,7 @@ async function saveInlineEdit(){
   it.name = name;
   it.location = location;
   it.amount = amountRes.value; // Fix (Phase 4): persist edited amount
+  it.category = category;      // Fix (category): persist edited category (no validation)
   state.editingId = null;
   persist(); snapshotCurrentData();
   renderList();
@@ -1807,7 +1882,7 @@ function buildEditRow(it){
   amountInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      saveInlineEdit(); // Enter in Amount saves the row
+      catInput.focus(); // Fix (category): Name -> Location -> Amount -> Category -> Save
     } else if (ev.key === 'Escape'){
       ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
       cancelInlineEdit();
@@ -1823,6 +1898,29 @@ function buildEditRow(it){
   amountErr.setAttribute('role', 'alert');
   amountWrap.appendChild(amountErr);
   row.appendChild(amountWrap);
+
+  // Fix (category): Category is editable inline too (free text, no validation).
+  // Enter saves the row; Escape cancels (same as the other edit inputs).
+  var catWrap = document.createElement('div');
+  catWrap.className = 'edit-field';
+  var catInput = document.createElement('input');
+  catInput.type = 'text';
+  catInput.maxLength = 120;
+  catInput.className = 'edit-input edit-category';
+  catInput.value = it.category; // empty category => empty input (the "-" is display-only)
+  catInput.setAttribute('aria-label', t('category'));
+  catInput.setAttribute('aria-describedby', 'hintInlineEdit');
+  catInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      saveInlineEdit(); // Enter in Category saves the row
+    } else if (ev.key === 'Escape'){
+      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
+      cancelInlineEdit();
+    }
+  });
+  catWrap.appendChild(catInput);
+  row.appendChild(catWrap);
 
   var actions = document.createElement('div');
   actions.className = 'actions';
@@ -1856,6 +1954,7 @@ async function handleFormSubmit(ev){
   ev.preventDefault();
   var name = el.inpName.value.trim();
   var location = el.inpLoc.value.trim();
+  var category = el.inpCategory.value.trim(); // Fix (category): free text, empty allowed
   if (!name){
     el.nameError.textContent = t('nameReq'); // Fix (Phase 5): error area always reserved — text only, no display toggling
     el.inpName.focus();
@@ -1910,7 +2009,7 @@ async function handleFormSubmit(ev){
       if (!go2){ el.inpLoc.focus(); return; }
     }
     var newId = state.nextItemId++;
-    state.items.push({ id: newId, name: name, location: location, amount: amountRes.value }); // Fix (Phase 4): amount stored
+    state.items.push({ id: newId, name: name, location: location, amount: amountRes.value, category: category }); // Fix (category): category stored (empty string when blank)
     persist(); snapshotCurrentData();
     // Show the page that contains the newly added item
     var fl = getFilteredItems();
@@ -1974,9 +2073,9 @@ function handleExport(){
     okLabel: t('download')
   }).then(function(yes){
     if (!yes) return;
-    var lines = ['Name,Location,Amount']; // Fix (Phase 4): Amount column added
+    var lines = ['Name,Location,Amount,Category']; // Fix (category): Category column added
     for (var i = 0; i < dep.items.length; i++){
-      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location) + ',' + String(dep.items[i].amount));
+      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location) + ',' + String(dep.items[i].amount) + ',' + csvEscape(dep.items[i].category));
     }
     // BOM so spreadsheet apps detect UTF-8 correctly
     var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -2033,6 +2132,7 @@ function analyzeCsvImport(text){
   var locIdx = header.indexOf('location');
   if (nameIdx === -1 || locIdx === -1) return { error: true };
   var amountIdx = header.indexOf('amount'); // Fix (Phase 4): optional Amount column
+  var catIdx = header.indexOf('category'); // Fix (category): optional Category column
   // keys of existing items: imported rows matching these are duplicates too
   var existingKeys = {};
   for (var e = 0; e < state.items.length; e++){
@@ -2046,6 +2146,10 @@ function analyzeCsvImport(text){
     var rowNum = r + 1; // 1-based, header is row 1
     var name = (nameIdx < cells.length) ? cells[nameIdx].trim().slice(0, 200) : '';
     var location = (locIdx < cells.length) ? cells[locIdx].trim().slice(0, 200) : '';
+    /* Fix (category): the Category column is optional. A missing column (or a short
+       row) yields '' for every row; a present column is used as-is (empty allowed).
+       Category never participates in duplicate detection (name + location only). */
+    var category = (catIdx !== -1 && catIdx < cells.length) ? cells[catIdx].trim().slice(0, 200) : '';
     if (!name){
       // Fix (Phase 5): only a missing NAME skips a row now — empty location is allowed
       missing.push({ row: rowNum, name: '', location: location, reason: 'name' });
@@ -2071,7 +2175,7 @@ function analyzeCsvImport(text){
       continue;
     }
     seen[key] = true;
-    valid.push({ name: name, location: location, amount: am });
+    valid.push({ name: name, location: location, amount: am, category: category }); // Fix (category)
     if (amDefaulted) amountDefaulted++;
     if (!location) noLocation++; // Fix (Phase 5): count imported rows with no location
   }
@@ -2116,7 +2220,7 @@ function handleImportFile(file){
       result.valid.forEach(function(v){
         var id = state.nextItemId++;
         if (firstNewId === null) firstNewId = id;
-        state.items.push({ id: id, name: v.name, location: v.location, amount: v.amount }); // Fix (Phase 4): amount imported
+        state.items.push({ id: id, name: v.name, location: v.location, amount: v.amount, category: v.category }); // Fix (category): category imported
       });
       state.editingId = null;
       persist(); snapshotCurrentData();
@@ -2570,12 +2674,14 @@ var SHORTCUT_SECTIONS = [
   { title: 'ksAddProduct', rows: [
     ['keyEnterName', 'ksEnterNameDesc'],
     ['keyEnterLoc', 'ksEnterLocDesc'],
-    ['keyEnterAmount', 'ksEnterAmountDesc'] // Fix (Phase 4): Enter in Amount adds
+    ['keyEnterAmount', 'ksEnterAmountDesc'], // Fix (category): Enter in Amount moves to Category
+    ['keyEnterCategory', 'ksEnterCatDesc']   // Fix (category): Enter in Category adds the product
   ]},
   { title: 'ksInlineEdit', rows: [
     ['keyEnterName', 'ksEnterNameDesc'],
     ['keyEnterLoc', 'ksEditEnterLocDesc'],
-    ['keyEnterAmount', 'ksEditEnterAmountDesc'], // Fix (Phase 4): Enter in Amount saves
+    ['keyEnterAmount', 'ksEditEnterAmountDesc'], // Fix (category): Enter in Amount moves to Category
+    ['keyEnterCategory', 'ksEditEnterCatDesc'],  // Fix (category): Enter in Category saves
     ['keyEsc', 'ksEditEscDesc']
   ]},
   { title: 'ksDepot', rows: [
@@ -2631,32 +2737,29 @@ function closeShortcuts(){
 /* Fix (sortable columns): header state — indicator char, aria-label and aria-sort
    for both sortable headers; the inactive sortable column reports aria-sort "none". */
 function updateSortHeaders(){
-  var nameInd = '\u2195', locInd = '\u2195', nameSort = 'none', locSort = 'none';
-  var nameAria = t('sortAriaUnsorted', { col: t('colName') });
-  var locAria = t('sortAriaUnsorted', { col: t('colLoc') });
-  if (state.sort.key === 'name'){
-    if (state.sort.dir === 'asc'){
-      nameInd = '\u2191'; nameSort = 'ascending';
-      nameAria = t('sortAriaAsc', { col: t('colName') });
-    } else {
-      nameInd = '\u2193'; nameSort = 'descending';
-      nameAria = t('sortAriaDesc', { col: t('colName') });
+  /* Fix (category): three sortable headers now (Name, Location, Category). Each keeps an
+     indicator char, an aria-label and aria-sort; inactive columns report "none". */
+  var cols = [
+    { key: 'name',     colKey: 'colName',     btn: el.btnSortName, head: el.colNameHead },
+    { key: 'location', colKey: 'colLoc',      btn: el.btnSortLoc,  head: el.colLocHead },
+    { key: 'category', colKey: 'colCategory', btn: el.btnSortCat,  head: el.colCategoryHead }
+  ];
+  cols.forEach(function(c){
+    var ind = '\u2195', sort = 'none';
+    var aria = t('sortAriaUnsorted', { col: t(c.colKey) });
+    if (state.sort.key === c.key){
+      if (state.sort.dir === 'asc'){
+        ind = '\u2191'; sort = 'ascending';
+        aria = t('sortAriaAsc', { col: t(c.colKey) });
+      } else {
+        ind = '\u2193'; sort = 'descending';
+        aria = t('sortAriaDesc', { col: t(c.colKey) });
+      }
     }
-  } else if (state.sort.key === 'location'){
-    if (state.sort.dir === 'asc'){
-      locInd = '\u2191'; locSort = 'ascending';
-      locAria = t('sortAriaAsc', { col: t('colLoc') });
-    } else {
-      locInd = '\u2193'; locSort = 'descending';
-      locAria = t('sortAriaDesc', { col: t('colLoc') });
-    }
-  }
-  el.btnSortName.textContent = t('colName') + ' ' + nameInd;
-  el.btnSortName.setAttribute('aria-label', nameAria);
-  el.colNameHead.setAttribute('aria-sort', nameSort);
-  el.btnSortLoc.textContent = t('colLoc') + ' ' + locInd;
-  el.btnSortLoc.setAttribute('aria-label', locAria);
-  el.colLocHead.setAttribute('aria-sort', locSort);
+    c.btn.textContent = t(c.colKey) + ' ' + ind;
+    c.btn.setAttribute('aria-label', aria);
+    c.head.setAttribute('aria-sort', sort);
+  });
 }
 /* Fix (sortable columns): 3-state cycle per header — unsorted -> asc -> desc -> unsorted.
    Resets pagination to page 1; announces the new state via the polite live region. */
@@ -2682,8 +2785,9 @@ function cycleSort(key){
   if (state.sort.key === null){
     announce(t('sortAnnCleared'));
   } else {
-    var col = t(state.sort.key === 'name' ? 'colName' : 'colLoc');
-    announce(t(state.sort.dir === 'asc' ? 'sortAnnAsc' : 'sortAnnDesc', { col: col }));
+    var colKey = state.sort.key === 'name' ? 'colName'
+               : (state.sort.key === 'location' ? 'colLoc' : 'colCategory');
+    announce(t(state.sort.dir === 'asc' ? 'sortAnnAsc' : 'sortAnnDesc', { col: t(colKey) }));
   }
 }
 
@@ -2804,7 +2908,7 @@ function handleDeleteSelected(){
    disabled in buildEditRow and startEdit() drops it from the selection), so the bulk
    scope is simply "currently selected ids". The guard in handleEditSelected is
    defensive only — both batch buttons always operate on non-editing rows. */
-var bulkPlan = null; // { ids, changes, warnLoc, amountDefaultedCount, preview, merges }
+var bulkPlan = null; // { ids, changes, warnLoc, warnCat, amountDefaultedCount, preview, merges }
 
 function bulkIsOpen(){
   return !el.bulkOverlay1.classList.contains('hidden') ||
@@ -2816,16 +2920,20 @@ function bulkToggleInputs(){
   el.bulkInpName.disabled = !el.bulkChkName.checked;
   el.bulkInpLoc.disabled = !el.bulkChkLoc.checked;
   el.bulkInpAmount.disabled = !el.bulkChkAmount.checked;
+  el.bulkInpCategory.disabled = !el.bulkChkCategory.checked; // Fix (category)
 }
 function bulkResetFields(){
   el.bulkChkName.checked = false;
   el.bulkChkLoc.checked = false;
   el.bulkChkAmount.checked = false;
+  el.bulkChkCategory.checked = false; // Fix (category)
   el.bulkInpName.value = '';
   el.bulkInpLoc.value = '';
   el.bulkInpAmount.value = ''; // Amount empty => defaults to 1 at apply (no pre-fill)
+  el.bulkInpCategory.value = ''; // Category empty => clears the category for selected items
   el.bulkErr1.textContent = '';
   el.bulkWarnLoc.classList.add('hidden');
+  el.bulkWarnCat.classList.add('hidden'); // Fix (category)
   bulkToggleInputs();
 }
 function bulkFocusAfterClose(){
@@ -2861,16 +2969,18 @@ function closeBulk1(){
   bulkFocusAfterClose();
 }
 function handleBulkContinue(){
-  var anyChecked = el.bulkChkName.checked || el.bulkChkLoc.checked || el.bulkChkAmount.checked;
+  var anyChecked = el.bulkChkName.checked || el.bulkChkLoc.checked || el.bulkChkAmount.checked ||
+                   el.bulkChkCategory.checked; // Fix (category)
   el.bulkErr1.textContent = '';
   el.bulkWarnLoc.classList.add('hidden');
+  el.bulkWarnCat.classList.add('hidden'); // Fix (category)
   if (!anyChecked){
     el.bulkErr1.textContent = t('bulkErrNoField'); // role=alert announces it
     el.bulkChkName.focus();
     return;
   }
-  var changes = { name: false, location: false, amount: false };
-  var warnLoc = false, amountDefaulted = 0;
+  var changes = { name: false, location: false, amount: false, category: false }; // Fix (category)
+  var warnLoc = false, amountDefaulted = 0, warnCat = false; // Fix (category)
   if (el.bulkChkName.checked){
     var nm = el.bulkInpName.value.trim();
     if (!nm){
@@ -2902,8 +3012,17 @@ function handleBulkContinue(){
       changes.amount = a.value;
     }
   }
+  if (el.bulkChkCategory.checked){ // Fix (category): free text — empty means "clear it"
+    changes.category = el.bulkInpCategory.value.trim();
+    if (changes.category === ''){ // empty category is a valid state — warn but allow (mirrors Location)
+      warnCat = true;
+      el.bulkWarnCat.textContent = t('bulkWarnCatClear');
+      el.bulkWarnCat.classList.remove('hidden');
+    }
+  }
   bulkPlan.changes = changes;
   bulkPlan.warnLoc = warnLoc;
+  bulkPlan.warnCat = warnCat; // Fix (category)
   bulkPlan.amountDefaultedCount = amountDefaulted;
   bulkPlan.preview = bulkBuildPlan(bulkPlan.ids, changes);
   openBulkPreview();
@@ -2916,6 +3035,7 @@ function bulkBuildPlan(ids, changes){
      labels on both sides whenever name or location changes; Amount-only changes
      use the compact "(Amount: a → b)" form. */
   var lines = [];
+  var catChangedN = 0; // Fix (category): items whose category actually changes
   ids.forEach(function(id){
     var it = findById(id);
     if (!it) return;
@@ -2925,15 +3045,21 @@ function bulkBuildPlan(ids, changes){
     var nameChanged = newName !== it.name;
     var locChanged = newLoc !== it.location;
     var amtChanged = newAmt !== it.amount;
+    var newCat = (changes.category !== false) ? changes.category : it.category; // Fix (category)
+    var catChanged = newCat !== it.category; // Fix (category)
+    if (catChanged) catChangedN++; // Fix (category)
     if (nameChanged || locChanged){
       lines.push(t('bulkItemAt', { name: it.name, location: it.location || '-' }) +
                  ' \u2192 ' + t('bulkItemAt', { name: newName, location: newLoc || '-' }));
     } else if (amtChanged){
       lines.push(t('bulkAmtChange', { name: it.name, location: it.location || '-', a: it.amount, b: newAmt }));
     }
+    if (catChanged){ // Fix (category): "-" when the category is being cleared
+      lines.push(t('bulkCatChange', { name: it.name, location: it.location || '-', c: newCat || '-' }));
+    }
     // no line when nothing changes for this item
   });
-  return { lines: lines };
+  return { lines: lines, catChangedCount: catChangedN };
 }
 function bulkComputeMerges(ids, changes){
   /* Simulate the post-edit depot (edited + untouched items) and group by
@@ -3054,12 +3180,17 @@ function handleBulkApply(){
   var dep = activeDepot();
   if (!plan || !dep){ closeBulk2(); return; }
   var ids = plan.ids, changes = plan.changes;
+  var catChangedN = 0; // Fix (category): items that actually received a different category
   // 1) apply the confirmed field changes
   dep.items.forEach(function(it){
     if (ids.indexOf(it.id) === -1) return;
     if (changes.name !== false) it.name = changes.name;
     if (changes.location !== false) it.location = changes.location;
     if (changes.amount !== false) it.amount = changes.amount;
+    if (changes.category !== false){ // Fix (category)
+      if (it.category !== changes.category) catChangedN++;
+      it.category = changes.category;
+    }
   });
   // 2) merge duplicates created by the edit (whole-depot scan, mirrors the preview)
   var mergeRes = mergeDuplicates();
@@ -3104,6 +3235,12 @@ function handleBulkApply(){
     var li3 = document.createElement('li');
     li3.textContent = t('bulkResultAmountNote', { x: plan.amountDefaultedCount });
     el.bulkReportList.appendChild(li3);
+    el.bulkReportList.classList.remove('hidden');
+  }
+  if (catChangedN > 0){ // Fix (category): summarize the applied category changes
+    var liCat = document.createElement('li');
+    liCat.textContent = t('bulkResultCatNote', { n: catChangedN });
+    el.bulkReportList.appendChild(liCat);
     el.bulkReportList.classList.remove('hidden');
   }
   el.bulkClose3.textContent = t('close');
@@ -3183,7 +3320,7 @@ function bindEvents(){
     if (ev.key === 'Escape') hideSuggestions();
   });
   el.inpLoc.addEventListener('input', handleLocationInput);
-  // Fix (Phase 4): keyboard flow is now Name -> Location -> Amount -> submit
+  // Fix (Phase 4): keyboard flow is now Name -> Location -> Amount -> Category -> submit
   // (previously Enter in Location submitted — audit #10 hardening carried forward)
   el.inpLoc.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
@@ -3194,7 +3331,14 @@ function bindEvents(){
   el.inpAmount.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      el.btnSubmit.click(); // Enter in Amount submits the form
+      el.inpCategory.focus(); // Fix (category): Enter in Amount moves to Category
+    }
+  });
+  // Fix (category): Enter in Category submits the form (end of the focus chain)
+  el.inpCategory.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      el.btnSubmit.click();
     }
   });
   document.addEventListener('compositionstart', function(){ composing = true; });
@@ -3279,6 +3423,7 @@ function bindEvents(){
   });
   el.btnSortName.addEventListener('click', function(){ cycleSort('name'); });
   el.btnSortLoc.addEventListener('click', function(){ cycleSort('location'); });
+  el.btnSortCat.addEventListener('click', function(){ cycleSort('category'); }); // Fix (category)
   el.selectAll.addEventListener('change', toggleSelectAll); // Fix (batch select)
   el.btnDelSelected.addEventListener('click', handleDeleteSelected); // Fix (batch select)
   /* Fix (bulk edit): event wiring — trigger, checkbox↔input enable/disable,
@@ -3287,7 +3432,8 @@ function bindEvents(){
   el.bulkChkName.addEventListener('change', bulkToggleInputs);
   el.bulkChkLoc.addEventListener('change', bulkToggleInputs);
   el.bulkChkAmount.addEventListener('change', bulkToggleInputs);
-  [el.bulkInpName, el.bulkInpLoc, el.bulkInpAmount].forEach(function(inp){
+  el.bulkChkCategory.addEventListener('change', bulkToggleInputs); // Fix (category)
+  [el.bulkInpName, el.bulkInpLoc, el.bulkInpAmount, el.bulkInpCategory].forEach(function(inp){
     inp.addEventListener('keydown', function(ev){
       if (ev.key === 'Enter' && !ev.isComposing){
         ev.preventDefault();

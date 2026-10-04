@@ -48,9 +48,15 @@ window.DEPOT_LANGUAGES = [
       add: "Add",
       save: "Save",
       cancel: "Cancel",
-      searchPh: "Search by product name or location…",
+      searchPh: "Search by name, location or category…",
       colName: "Product",
       colLoc: "Location",
+      /* Fix (category): free-text product category. Two keys mirror the existing
+         nameLbl/colName convention — `category` is the Add-form field label (also
+         reused by the bulk-edit modal label, like locLbl/amount), `colCategory`
+         is the sortable stock-list column header. */
+      category: "Category",
+      colCategory: "Category",
       emptyList: "No records yet in “{depotName}”. Add your first record using “Add/Import Product”.",
       defaultDepotName: "Depot-1",
       noResults: "No results for “{query}”.",
@@ -121,9 +127,12 @@ window.DEPOT_LANGUAGES = [
       ksEnterNameDesc: "Move to Location",
       ksEnterLocDesc: "Move to Amount",
       keyEnterAmount: "Enter (in Amount)",
-      ksEnterAmountDesc: "Add the product",
+      ksEnterAmountDesc: "Move to Category", // Fix (category): Enter in Amount now jumps to Category
+      keyEnterCategory: "Enter (in Category)",
+      ksEnterCatDesc: "Add the product",
       ksEditEnterLocDesc: "Move to Amount",
-      ksEditEnterAmountDesc: "Save changes",
+      ksEditEnterAmountDesc: "Move to Category", // Fix (category): inline edit jumps Amount -> Category
+      ksEditEnterCatDesc: "Save changes",
       ksEditEscDesc: "Cancel editing",
       ksDepotOpenDesc: "Open the depot list",
       ksDepotArrowsDesc: "Move through depots",
@@ -132,8 +141,8 @@ window.DEPOT_LANGUAGES = [
       ksModalTabDesc: "Move between buttons",
       ksModalEnterDesc: "Confirm the focused button",
       ksModalEscDesc: "Close the modal",
-      hintInlineEdit: "Enter: Name → Location → Amount → Save · Esc to cancel",
-      hintAddJump: "Tip: Enter moves Name → Location → Amount; Enter in Amount adds the product.",
+      hintInlineEdit: "Enter: Name → Location → Amount → Category → Save · Esc to cancel",
+      hintAddJump: "Tip: Enter moves Name → Location → Amount → Category; Enter in Category adds the product.",
       keyTabShift: "Tab / Shift+Tab",
       keyEnterSpace: "Enter / Space",
       keyEsc: "Esc",
@@ -216,9 +225,13 @@ window.DEPOT_LANGUAGES = [
       bulkErrNoField: "Select at least one field to change.",
       bulkErrName: "Enter a name.",
       bulkWarnLocClear: "Location will be cleared for selected items.",
+      bulkWarnCatClear: "Category will be cleared for selected items.",
       bulkPreviewList: "The following items will be updated:",
       bulkItemAt: "{name} at {location}",
       bulkAmtChange: "{name} at {location} (Amount: {a} → {b})",
+      /* Fix (category): category-only change line; always emitted independently of the
+         name/location or amount line so a category change is never omitted from the preview */
+      bulkCatChange: "{name} at {location} → Category: {c}",
       bulkMergeIntro: "The following items will be merged:",
       bulkMergeGroupLine: "{name} at {location} → merged from {n} items (amounts {amounts} = {total}).",
       bulkMergeCount: "{n} items will be merged into {m} items.",
@@ -226,6 +239,7 @@ window.DEPOT_LANGUAGES = [
       bulkResultUpdated: "{n} items updated.",
       bulkResultMerged: "{m} items merged into {k} items.",
       bulkResultAmountNote: "{x} items had missing Amount and were set to 1.",
+      bulkResultCatNote: "Category changed on {n} item(s).",
       bulkAnnounce: "{n} items updated, {m} items merged.",
       /* Fix (depot icon picker): clickable icon + 20-preset picker */
       iconButtonLabel: "Change depot icon",
@@ -275,9 +289,15 @@ window.DEPOT_LANGUAGES = [
       add: "Ekle",
       save: "Kaydet",
       cancel: "İptal",
-      searchPh: "Ürün adı veya konuma göre ara…",
+      searchPh: "Ürün adı, konum veya kategoriye göre ara…",
       colName: "Ürün",
       colLoc: "Konum",
+      /* Fix (category): serbest metin kategori. İki anahtar, mevcut nameLbl/colName
+         düzenini izler — `category` ekleme formu etiketi (toplu düzenleme etiketi de
+         bunu kullanır, tıpkı locLbl/amount gibi), `colCategory` ise sıralanabilir
+         stok listesi sütun başlığıdır. */
+      category: "Kategori",
+      colCategory: "Kategori",
       emptyList: "“{depotName}” içinde henüz kayıt yok. “Ürün Ekle/İçe Aktar” ile ilk kaydınızı ekleyin.",
       defaultDepotName: "Depo-1",
       noResults: "“{query}” için sonuç bulunamadı.",
@@ -348,9 +368,12 @@ window.DEPOT_LANGUAGES = [
       ksEnterNameDesc: "Konum alanına geçin",
       ksEnterLocDesc: "Adet alanına geçin",
       keyEnterAmount: "Enter (Adet alanında)",
-      ksEnterAmountDesc: "Ürünü ekleyin",
+      ksEnterAmountDesc: "Kategori alanına geçin", // Fix (category)
+      keyEnterCategory: "Enter (Kategori'de)",
+      ksEnterCatDesc: "Ürünü ekleyin",
       ksEditEnterLocDesc: "Adet alanına geçin",
-      ksEditEnterAmountDesc: "Değişiklikleri kaydet",
+      ksEditEnterAmountDesc: "Kategori alanına geçin", // Fix (category)
+      ksEditEnterCatDesc: "Değişiklikleri kaydet",
       ksEditEscDesc: "Düzenlemeyi iptal edin",
       ksDepotOpenDesc: "Depo listesini açın",
       ksDepotArrowsDesc: "Depolar arasında gezinin",
@@ -359,8 +382,8 @@ window.DEPOT_LANGUAGES = [
       ksModalTabDesc: "Düğmeler arasında gezinin",
       ksModalEnterDesc: "Odaklanılan düğmeyi onaylayın",
       ksModalEscDesc: "Modalı kapatın",
-      hintInlineEdit: "Enter: Ürün Adı → Konum → Adet → Kaydet · İptal için Esc.",
-      hintAddJump: "İpucu: Enter, Ürün Adı → Konum → Adet arasında geçer; Adet alanında Enter ürünü ekler.",
+      hintInlineEdit: "Enter: Ürün Adı → Konum → Adet → Kategori → Kaydet · İptal için Esc.",
+      hintAddJump: "İpucu: Enter, Ürün Adı → Konum → Adet → Kategori arasında geçer; Kategori alanında Enter ürünü ekler.",
       keyTabShift: "Tab / Shift+Tab",
       keyEnterSpace: "Enter / Boşluk",
       keyEsc: "Esc",
@@ -443,9 +466,11 @@ window.DEPOT_LANGUAGES = [
       bulkErrNoField: "Değiştirmek için en az bir alan seçin.",
       bulkErrName: "Ürün adı girin.",
       bulkWarnLocClear: "Seçilen öğelerin konumları temizlenecek.",
+      bulkWarnCatClear: "Seçilen kayıtların kategorisi temizlenecek.",
       bulkPreviewList: "Şu öğeler güncellenecek:",
       bulkItemAt: "{location} konumundaki {name}",
       bulkAmtChange: "{location} konumundaki {name} (Adet: {a} → {b})",
+      bulkCatChange: "{location} konumundaki {name} → Kategori: {c}",
       bulkMergeIntro: "Şu öğeler birleştirilecek:",
       bulkMergeGroupLine: "{location} konumundaki {name} → {n} öğeden birleştiriliyor (adetler {amounts} = {total}).",
       bulkMergeCount: "{n} öğe birleştirilerek {m} öğe olacak.",
@@ -453,6 +478,7 @@ window.DEPOT_LANGUAGES = [
       bulkResultUpdated: "{n} öğe güncellendi.",
       bulkResultMerged: "{m} öğe birleştirilerek {k} öğe oldu.",
       bulkResultAmountNote: "{x} öğede Adet boştu ve 1 olarak ayarlandı.",
+      bulkResultCatNote: "{n} kaydın kategorisi değiştirildi.",
       bulkAnnounce: "{n} öğe güncellendi, {m} öğe birleştirildi.",
       /* Fix (depot icon picker): tıklanabilir simge + 20 hazır simge seçici */
       iconButtonLabel: "Depo simgesini değiştir",
