@@ -69,6 +69,18 @@
   } catch(e){}
 })();
 </script>
+<script>
+/* Fix (settings): apply the saved font/icon scale before first paint (no flash) */
+(function(){
+  try {
+    var MAP = { small:0.9, normal:1, large:1.15, xl:1.3 };
+    var f = localStorage.getItem('depotCatalog.fontScale');
+    var i = localStorage.getItem('depotCatalog.iconScale');
+    if (MAP[f]) document.documentElement.style.setProperty('--app-font-scale', String(MAP[f]));
+    if (MAP[i]) document.documentElement.style.setProperty('--app-icon-scale', String(MAP[i]));
+  } catch(e){}
+})();
+</script>
 <style>
 /* ---------- Reset & theme tokens ---------- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -89,6 +101,10 @@
   --danger-bg:#fdecea;
   --radius:10px;
   --shadow:0 1px 3px rgba(16,24,40,.08);
+  /* Fix (settings): user-adjustable scales (set on <html> pre-paint + by the settings modal).
+     --app-font-scale scales rem-based text; --app-icon-scale scales icon glyphs. Default 100%. */
+  --app-font-scale:1;
+  --app-icon-scale:1;
 }
 :root[data-theme="dark"]{
   --bg:#12161c;
@@ -127,7 +143,7 @@
     --shadow:0 1px 3px rgba(0,0,0,.4);
   }
 }
-html{font-size:16px;-webkit-text-size-adjust:100%;overflow-y:scroll}
+html{font-size:calc(16px * var(--app-font-scale));-webkit-text-size-adjust:100%;overflow-y:scroll} /* Fix (settings): was 16px hard-coded */
 body{
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   background:var(--bg);color:var(--text);
@@ -234,7 +250,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 .row .actions{display:flex;gap:.35rem}
 .icon-btn{
   background:none;border:1px solid transparent;border-radius:8px;
-  width:44px;height:44px;font-size:1.15rem;line-height:1;cursor:pointer;
+  width:44px;height:44px;font-size:calc(1.15rem * var(--app-icon-scale));line-height:1;cursor:pointer;
   color:var(--muted);
 }
 .icon-btn:hover{background:var(--bg);color:var(--text)}
@@ -389,7 +405,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 .theme-switch:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .theme-switch .sw-icon{
   position:absolute;top:50%;transform:translateY(-50%);
-  font-size:.72rem;line-height:1;pointer-events:none;
+  font-size:calc(.72rem * var(--app-icon-scale));line-height:1;pointer-events:none;
 }
 /* Only the icon for the ACTIVE theme is visible:
    light -> sun (right, opposite the knob), dark -> moon (left) */
@@ -505,7 +521,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   display:inline-flex;align-items:center;justify-content:center;
   width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
   background:var(--surface);color:var(--muted);cursor:pointer;
-  font-size:.85rem;font-weight:700;font-family:inherit;
+  font-size:calc(.85rem * var(--app-icon-scale));font-weight:700;font-family:inherit;
 }
 .ks-btn:hover{color:var(--text);background:var(--bg)}
 .ks-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -538,6 +554,21 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
    (b) left the Location field shorter than Name/Amount (which reserve an error line),
    so the desktop row (align-items:end) dropped the Location input ~1.28rem lower. */
 #hintAddJump{margin-top:.3rem;line-height:1.2}
+
+/* Fix (settings): inline icon glyphs (pagination arrows, toolbar arrows) follow the icon scale */
+.ico{display:inline-block;font-size:calc(1em * var(--app-icon-scale));line-height:1}
+/* Fix (settings): settings modal. z-index below .overlay (50) so the shared reset
+   confirmation modal always renders ON TOP of the settings dialog. */
+.settings-overlay{z-index:45}
+.settings-modal{max-height:85vh;overflow-y:auto}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.85rem}
+.settings-row label{font-size:.9rem;color:var(--text)}
+.settings-row select{
+  font-family:inherit;font-size:.9rem;padding:.4rem .55rem;min-height:40px;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text);
+}
+.settings-row select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 /* ---------- Accessibility: skip link & modal focus helpers ---------- */
 .sr-only{
@@ -644,17 +675,14 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <a id="ghLink" class="gh-link" href="https://github.com/sekodev/depotCatalog" target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
       </a>
+      <!-- Fix (settings): top-right order is now ? then theme then gear. The standalone
+           language selector was removed and now lives inside the settings modal. -->
+      <button type="button" id="btnShortcuts" class="ks-btn" aria-label="" title="">?</button>
       <button type="button" id="btnTheme" class="theme-switch" role="switch" aria-checked="false" aria-label="">
         <span class="sw-icon sw-sun" aria-hidden="true">☀️</span>
         <span class="sw-icon sw-moon" aria-hidden="true">🌙</span>
       </button>
-      <!-- Fix: ref 'langSwitch' needs this id — without it el.langSwitch was null and
-           applyStaticText threw on load, breaking every label after it (audit follow-up) -->
-      <div id="langSwitch" class="lang-switch" role="group" aria-label="">
-        <button type="button" id="btnLangTr">TR</button>
-        <button type="button" id="btnLangEn">EN</button>
-      </div>
-      <button type="button" id="btnShortcuts" class="ks-btn" aria-label="" title="">?</button>
+      <button type="button" id="btnSettings" class="ks-btn" aria-label="" title="" aria-haspopup="dialog"><span aria-hidden="true">⚙️</span></button>
     </div>
   </header>
 
@@ -722,7 +750,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
     <div class="toolbar-row">
       <div class="group-export">
         <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Export to CSV" (audit #6) -->
-        <button type="button" id="btnExport" class="btn btn-secondary"><span aria-hidden="true">⬇&nbsp;</span><span id="lblExport"></span></button>
+        <button type="button" id="btnExport" class="btn btn-secondary"><span class="ico" aria-hidden="true">⬇&nbsp;</span><span id="lblExport"></span></button>
         <!-- Fix (batch select): visible only while rows are selected; .hidden = display:none => not tab-reachable -->
         <!-- Fix (bulk icons): same icons as the inline row actions (✏️/🗑️), emoji is
              aria-hidden; the accessible name comes from aria-label/title (updated live) -->
@@ -788,7 +816,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
            wrapped and crowded this area. Keeps .hint-inline (muted, small) styling. -->
       <p id="hintAddJump" class="hint-inline hidden"></p>
       <!-- Fix: decorative arrow hidden from AT; accessible name is exactly "Import from CSV" (audit #6) -->
-      <button type="button" id="btnImportTrigger" class="btn btn-secondary"><span aria-hidden="true">⬆&nbsp;</span><span id="lblImport"></span></button>
+      <button type="button" id="btnImportTrigger" class="btn btn-secondary"><span class="ico" aria-hidden="true">⬆&nbsp;</span><span id="lblImport"></span></button>
       <!-- Fix (Phase 3): sr-only label for the CSV file input (spec §1) -->
       <label for="inpImport" id="lblImportFile" class="sr-only"></label>
       <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
@@ -906,6 +934,39 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   </div>
 </div>
 
+<!-- Settings modal (Fix: settings gear) -->
+<div class="overlay settings-overlay hidden" id="settingsOverlay">
+  <div class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <h2 id="settingsTitle"></h2>
+    <div class="settings-row">
+      <label for="setLang" id="lblSetLang"></label>
+      <select id="setLang"></select>
+    </div>
+    <div class="settings-row">
+      <label for="setFont" id="lblSetFont"></label>
+      <select id="setFont">
+        <option value="small"></option>
+        <option value="normal" selected></option>
+        <option value="large"></option>
+        <option value="xl"></option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <label for="setIcon" id="lblSetIcon"></label>
+      <select id="setIcon">
+        <option value="small"></option>
+        <option value="normal" selected></option>
+        <option value="large"></option>
+        <option value="xl"></option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="btnResetSettings" class="btn btn-secondary"></button>
+      <button type="button" id="setClose" class="btn btn-primary"></button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" aria-hidden="true"></div>
 <div id="srAnnouncer" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 <div id="srAnnouncerAssertive" role="alert" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
@@ -920,6 +981,9 @@ var LS_DATA    = 'depotCatalog.data.v2';   // multi-depot storage (current)
 var LS_LEGACY  = 'depotCatalog.items.v1';  // pre-multi-depot storage (migrated once)
 var LS_LANG    = 'depotCatalog.lang';
 var LS_THEME   = 'depotCatalog.theme';
+/* Fix (settings): font/icon scale preference keys */
+var LS_FONT    = 'depotCatalog.fontScale';
+var LS_ICON    = 'depotCatalog.iconScale';
 var MAX_SNAPS = 5;
 
 /* ============ i18n (strings live in external translations.js) ============ */
@@ -943,10 +1007,9 @@ function getLang(code){
   }
   return null;
 }
-function detectLang(){
-  var saved = null;
-  try { saved = localStorage.getItem(LS_LANG); } catch(e){}
-  if (saved && getLang(saved)) return saved;
+/* Fix (settings): device detection factored out so "reset to defaults" can re-detect
+   the language while ignoring the saved preference (existing fallback preserved). */
+function detectLangFromDevice(){
   var langs = (navigator.languages && navigator.languages.length)
     ? navigator.languages : [navigator.language || ''];
   for (var i = 0; i < langs.length; i++){
@@ -957,6 +1020,12 @@ function detectLang(){
     }
   }
   return getLang('en') ? 'en' : LANGUAGES[0].code; // fallback
+}
+function detectLang(){
+  var saved = null;
+  try { saved = localStorage.getItem(LS_LANG); } catch(e){}
+  if (saved && getLang(saved)) return saved;
+  return detectLangFromDevice();
 }
 function t(key, params){
   var cur = getLang(state.lang);
@@ -989,6 +1058,9 @@ var state = {
   selectedIds: {}, // Fix (batch select): page-scoped selection map (id -> true); not persisted
   editingId: null,
   lang: 'en',
+  /* Fix (settings): user preferences (persisted separately in localStorage) */
+  fontScale: 'normal',
+  iconScale: 'normal',
   page: 1,
   pageSize: 5
 };
@@ -1014,7 +1086,7 @@ function syncItemsRef(){
 /* ================= DOM refs ================= */
 function $(id){ return document.getElementById(id); }
 var el = {};
-['btnLangTr','btnLangEn','banner','formTitle','productForm',
+['banner','formTitle','productForm',
  'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit',
  'inpCategory','lblCategory',
  'inpSearch','btnSortName','btnSortLoc','btnSortCat','colNameHead','colLocHead','colCategoryHead','listBody','itemCount','btnExport','lblExport','listFoot',
@@ -1026,7 +1098,7 @@ var el = {};
  'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
  'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
  'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
- 'srAnnouncer','srAnnouncerAssertive','langSwitch','stockListTitle','lblImportFile',
+ 'srAnnouncer','srAnnouncerAssertive','stockListTitle','lblImportFile',
  'inpAmount','lblAmount','amountError','colAmount','selectAll','btnDelSelected','delSelCount','editSelCount',
  /* Fix (bulk edit): three-step bulk edit modal elements */
  'btnEditSelected','bulkOverlay1','bulkTitle1','bulkHint1','bulkChkName','bulkLblName','bulkInpName',
@@ -1036,7 +1108,9 @@ var el = {};
  'bulkOverlay2','bulkTitle2','bulkP2','bulkChangesList','bulkP3','bulkMergeList','bulkErr2','bulkCancel2','bulkApply',
  'bulkOverlay3','bulkTitle3','bulkP4','bulkReportList','bulkClose3',
  /* Fix (depot icon picker) */
- 'btnDepotIcon','depotIconEmoji','iconPickerOverlay','iconPickerTitle','iconGrid','iconPickerSave','iconPickerCancel'
+ 'btnDepotIcon','depotIconEmoji','iconPickerOverlay','iconPickerTitle','iconGrid','iconPickerSave','iconPickerCancel',
+ /* Fix (settings): settings modal */
+ 'btnSettings','settingsOverlay','settingsTitle','setLang','lblSetLang','setFont','lblSetFont','setIcon','lblSetIcon','btnResetSettings','setClose'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -1468,7 +1542,8 @@ function applyStaticText(){
   el.lblExport.textContent = t('download');
   el.lblImport.textContent = t('upload');
   el.skipLink.textContent = t('skipToMain');
-  el.langSwitch.setAttribute('aria-label', t('langLabel'));
+  /* Fix (settings): the standalone language selector was replaced by the settings
+     gear; its labels/options are refreshed by applySettingsText() at the end. */
   el.stockListTitle.textContent = t('stockListTitle'); // Fix (Phase 3): sr-only h2 label
   el.lblImportFile.textContent = t('importFileLbl'); // Fix (Phase 3): sr-only file-input label
   el.pagination.setAttribute('aria-label', t('paginationAria')); // Fix (Phase 3): nav keeps its label even while hidden (renderPagination refreshes it when shown)
@@ -1491,11 +1566,7 @@ function applyStaticText(){
   el.btnShortcuts.title = t('shortcutsAria');
   el.hintAddJump.textContent = t('hintAddJump');
   el.hintAddJump.classList.toggle('hidden', !hasDepot);
-  var trAvail = !!getLang('tr'), enAvail = !!getLang('en');
-  el.btnLangTr.classList.toggle('hidden', !trAvail);
-  el.btnLangEn.classList.toggle('hidden', !enAvail);
-  el.btnLangTr.setAttribute('aria-pressed', String(state.lang === 'tr'));
-  el.btnLangEn.setAttribute('aria-pressed', String(state.lang === 'en'));
+  applySettingsText(); // Fix (settings): labels + options for the settings modal
 }
 function getFilteredItems(){
   var q = state.filter.trim().toLowerCase();
@@ -1674,7 +1745,7 @@ function renderPagination(totalPages){
     return s;
   }
 
-  var prev = mkBtn('&#8249; ' + t('prevPage'), state.page - 1, { disabled: state.page === 1 });
+  var prev = mkBtn('<span class="ico">&#8249;</span> ' + t('prevPage'), state.page - 1, { disabled: state.page === 1 });
   prev.setAttribute('aria-label', t('prevPageAria'));
   nav.appendChild(prev);
 
@@ -1695,7 +1766,7 @@ function renderPagination(totalPages){
     nav.appendChild(mkBtn(String(p), p, { active: p === state.page }));
   });
 
-  var next = mkBtn(t('nextPage') + ' &#8250;', state.page + 1, { disabled: state.page === totalPages });
+  var next = mkBtn(t('nextPage') + ' <span class="ico">&#8250;</span>', state.page + 1, { disabled: state.page === totalPages });
   next.setAttribute('aria-label', t('nextPageAria'));
   nav.appendChild(next);
 }
@@ -1910,6 +1981,7 @@ function buildEditRow(it){
   catInput.value = it.category; // empty category => empty input (the "-" is display-only)
   catInput.setAttribute('aria-label', t('category'));
   catInput.setAttribute('aria-describedby', 'hintInlineEdit');
+  catInput.addEventListener('input', function(){ autoCapitalizeFirst(catInput); }); // Fix (settings task)
   catInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
@@ -2310,6 +2382,119 @@ function toggleTheme(){
   try { localStorage.setItem(LS_THEME, next); } catch(e){}
   announce(t(next === 'dark' ? 'themeDarkOn' : 'themeLightOn'));
 }
+/* ================= Settings (Fix: settings gear) ================= */
+var SCALE_VALUES = { small: 0.9, normal: 1, large: 1.15, xl: 1.3 };
+var SIZE_KEYS = { small: 'sizeSmall', normal: 'sizeNormal', large: 'sizeLarge', xl: 'sizeExtraLarge' };
+var settingsLastFocused = null;
+function readScale(key){
+  try { var v = localStorage.getItem(key); return SCALE_VALUES[v] ? v : 'normal'; } catch(e){ return 'normal'; }
+}
+function applyFontScale(v){
+  var k = SCALE_VALUES[v] ? v : 'normal';
+  document.documentElement.style.setProperty('--app-font-scale', String(SCALE_VALUES[k]));
+}
+function applyIconScale(v){
+  var k = SCALE_VALUES[v] ? v : 'normal';
+  document.documentElement.style.setProperty('--app-icon-scale', String(SCALE_VALUES[k]));
+}
+/* Refresh the settings dialog labels/options. Called from applyStaticText on every
+   render, so a language switch re-localizes the dialog while it is open. */
+function applySettingsText(){
+  if (!el.settingsTitle) return;
+  el.settingsTitle.textContent = t('settingsTitle');
+  el.lblSetLang.textContent = t('languageLabel');
+  el.lblSetFont.textContent = t('fontSizeLabel');
+  el.lblSetIcon.textContent = t('iconSizeLabel');
+  el.btnResetSettings.textContent = t('resetToDefaults');
+  el.setClose.textContent = t('close');
+  el.btnSettings.setAttribute('aria-label', t('settingsButton'));
+  el.btnSettings.title = t('settingsButton');
+  /* language options come from the loaded blocks (label = each block's own name) */
+  el.setLang.innerHTML = '';
+  LANGUAGES.forEach(function(Lg){
+    var o = document.createElement('option');
+    o.value = Lg.code;
+    o.textContent = Lg.label || Lg.code;
+    el.setLang.appendChild(o);
+  });
+  el.setLang.value = state.lang;
+  ['setFont', 'setIcon'].forEach(function(id){
+    var sel = el[id];
+    for (var i = 0; i < sel.options.length; i++){
+      sel.options[i].textContent = t(SIZE_KEYS[sel.options[i].value]);
+    }
+  });
+  el.setFont.value = state.fontScale;
+  el.setIcon.value = state.iconScale;
+}
+function openSettings(){
+  settingsLastFocused = document.activeElement;
+  applySettingsText();
+  el.settingsOverlay.classList.remove('hidden');
+  try { el.setLang.focus(); } catch(e){}
+}
+function closeSettings(){
+  el.settingsOverlay.classList.add('hidden');
+  /* Fix (settings): the gear is the only opener, so focus deterministically returns there
+     (mirrors the icon picker) regardless of how the dialog was opened. */
+  var back = el.btnSettings || settingsLastFocused;
+  if (back && back.focus){ try { back.focus(); } catch(e){} }
+  settingsLastFocused = null;
+}
+function settingsTabTrap(ev){
+  if (ev.key !== 'Tab') return;
+  var f = el.settingsOverlay.querySelectorAll('button:not([disabled]):not(.hidden),select:not([disabled]):not(.hidden)');
+  if (!f.length) return;
+  var first = f[0], last = f[f.length - 1];
+  if (ev.shiftKey){
+    if (document.activeElement === first || document.activeElement === el.settingsOverlay){ ev.preventDefault(); last.focus(); }
+  } else {
+    if (document.activeElement === last){ ev.preventDefault(); first.focus(); }
+  }
+}
+function onSettingsLangChange(){
+  var v = el.setLang.value;
+  if (!getLang(v) || v === state.lang) return;
+  var label = (getLang(v) || {}).label || v;
+  setLang(v); // re-renders all UI, persists the choice, updates the document title
+  announce(t('languageChangedAnnouncement', { language: label }));
+}
+function onSettingsFontChange(){
+  var v = el.setFont.value;
+  state.fontScale = v;
+  applyFontScale(v);
+  try { localStorage.setItem(LS_FONT, v); } catch(e){}
+  announce(t('fontSizeAnnouncement', { size: t(SIZE_KEYS[v]) }));
+}
+function onSettingsIconChange(){
+  var v = el.setIcon.value;
+  state.iconScale = v;
+  applyIconScale(v);
+  try { localStorage.setItem(LS_ICON, v); } catch(e){}
+  announce(t('iconSizeAnnouncement', { size: t(SIZE_KEYS[v]) }));
+}
+function onResetSettings(){
+  askConfirm({
+    title: t('resetConfirmTitle'),
+    message: t('resetConfirmBody'),
+    okLabel: t('resetConfirmYes'),
+    danger: true
+  }).then(function(ok){
+    if (!ok) return;
+    state.lang = detectLangFromDevice(); // re-detect (ignores the saved preference)
+    try { localStorage.removeItem(LS_LANG); } catch(e){}
+    state.fontScale = 'normal';
+    state.iconScale = 'normal';
+    applyFontScale('normal');
+    applyIconScale('normal');
+    try { localStorage.setItem(LS_FONT, 'normal'); } catch(e){}
+    try { localStorage.setItem(LS_ICON, 'normal'); } catch(e){}
+    render(); // re-render every string in the reset language
+    if (!el.settingsOverlay.classList.contains('hidden')) applySettingsText();
+    announce(t('settingsResetAnnouncement'));
+  });
+}
+
 
 /* ================= Save indicator ================= */
 var savePhase1Timer = null;
@@ -3320,6 +3505,8 @@ function bindEvents(){
     if (ev.key === 'Escape') hideSuggestions();
   });
   el.inpLoc.addEventListener('input', handleLocationInput);
+  /* Fix (settings task): Category auto-capitalizes the first letter, like Name/Location */
+  el.inpCategory.addEventListener('input', function(){ autoCapitalizeFirst(el.inpCategory); });
   // Fix (Phase 4): keyboard flow is now Name -> Location -> Amount -> Category -> submit
   // (previously Enter in Location submitted — audit #10 hardening carried forward)
   el.inpLoc.addEventListener('keydown', function(ev){
@@ -3433,6 +3620,8 @@ function bindEvents(){
   el.bulkChkLoc.addEventListener('change', bulkToggleInputs);
   el.bulkChkAmount.addEventListener('change', bulkToggleInputs);
   el.bulkChkCategory.addEventListener('change', bulkToggleInputs); // Fix (category)
+  /* Fix (settings task): bulk Category auto-capitalizes its first letter too */
+  el.bulkInpCategory.addEventListener('input', function(){ autoCapitalizeFirst(el.bulkInpCategory); });
   [el.bulkInpName, el.bulkInpLoc, el.bulkInpAmount, el.bulkInpCategory].forEach(function(inp){
     inp.addEventListener('keydown', function(ev){
       if (ev.key === 'Enter' && !ev.isComposing){
@@ -3453,8 +3642,17 @@ function bindEvents(){
     });
     ov.addEventListener('keydown', bulkTabTrap); // a11y: Tab focus trap per visible overlay
   });
-  el.btnLangTr.addEventListener('click', function(){ setLang('tr'); });
-  el.btnLangEn.addEventListener('click', function(){ setLang('en'); });
+  /* Fix (settings): the gear opens the settings dialog; controls apply live */
+  el.btnSettings.addEventListener('click', openSettings);
+  el.setClose.addEventListener('click', closeSettings);
+  el.settingsOverlay.addEventListener('click', function(ev){
+    if (ev.target === el.settingsOverlay) closeSettings(); // backdrop = close
+  });
+  el.settingsOverlay.addEventListener('keydown', settingsTabTrap); // a11y: Tab focus trap
+  el.setLang.addEventListener('change', onSettingsLangChange);
+  el.setFont.addEventListener('change', onSettingsFontChange);
+  el.setIcon.addEventListener('change', onSettingsIconChange);
+  el.btnResetSettings.addEventListener('click', onResetSettings);
   el.btnExport.addEventListener('click', handleExport);
   el.btnImportTrigger.addEventListener('click', function(){
     try { el.inpImport.click(); } catch(e){}
@@ -3504,6 +3702,8 @@ function bindEvents(){
         else closeBulk3();
       } else if (!el.overlay.classList.contains('hidden')){
         closeConfirm(false);
+      } else if (!el.settingsOverlay.classList.contains('hidden')){
+        closeSettings(); // Fix (settings): Escape closes the settings dialog
       } else if (depotMenuIsOpen()){
         closeDepotMenu();
         el.depotSelect.focus();
@@ -3572,6 +3772,12 @@ function init(){
   }
   checkStorage();
   state.lang = detectLang(); // runs BEFORE data load so migration can pick the language
+  /* Fix (settings): load the saved scales (the head script already applied them pre-paint;
+     this syncs state and guarantees the values are applied on every start) */
+  state.fontScale = readScale(LS_FONT);
+  state.iconScale = readScale(LS_ICON);
+  applyFontScale(state.fontScale);
+  applyIconScale(state.iconScale);
   var loaded = { ok: true, empty: true };
   if (storageOk){
     loaded = loadState();

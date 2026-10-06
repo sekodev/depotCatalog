@@ -271,7 +271,25 @@ window.DEPOT_LANGUAGES = [
       iconSelectedAnnouncement: "Selected {emojiName}.",
       iconSelectedSuffix: " (selected)",
       exportWarnTitle: "ℹ️ Export to CSV",
-      exportWarnMsg: "This export contains only the current depot: “{depotName}”."
+      exportWarnMsg: "This export contains only the current depot: “{depotName}”.",
+      /* Fix (settings): settings modal (gear) - language + font/icon size + reset */
+      settingsButton: "Settings",
+      settingsTitle: "⚙️ Settings",
+      languageLabel: "Language",
+      fontSizeLabel: "Font size",
+      iconSizeLabel: "Icon size",
+      sizeSmall: "Small",
+      sizeNormal: "Normal",
+      sizeLarge: "Large",
+      sizeExtraLarge: "Extra Large",
+      resetToDefaults: "Reset to defaults",
+      resetConfirmTitle: "Reset settings",
+      resetConfirmBody: "Reset all settings to defaults?",
+      resetConfirmYes: "Reset",
+      languageChangedAnnouncement: "Language changed to {language}.",
+      fontSizeAnnouncement: "Font size set to {size}.",
+      iconSizeAnnouncement: "Icon size set to {size}.",
+      settingsResetAnnouncement: "Settings reset to defaults."
     }
   },
   /* ------------------ TÜRKÇE ------------------ */
@@ -510,7 +528,25 @@ window.DEPOT_LANGUAGES = [
       iconSelectedAnnouncement: "{emojiName} seçildi.",
       iconSelectedSuffix: " (seçili)",
       exportWarnTitle: "ℹ️ CSV'ye Aktar",
-      exportWarnMsg: "Bu dışa aktarma yalnızca geçerli depoyu içerir: “{depotName}”."
+      exportWarnMsg: "Bu dışa aktarma yalnızca geçerli depoyu içerir: “{depotName}”.",
+      /* Fix (settings): ayarlar penceresi (dişli) - dil + yazı/simge boyutu + sıfırlama */
+      settingsButton: "Ayarlar",
+      settingsTitle: "⚙️ Ayarlar",
+      languageLabel: "Dil",
+      fontSizeLabel: "Yazı boyutu",
+      iconSizeLabel: "Simge boyutu",
+      sizeSmall: "Küçük",
+      sizeNormal: "Normal",
+      sizeLarge: "Büyük",
+      sizeExtraLarge: "Çok Büyük",
+      resetToDefaults: "Varsayılanlara sıfırla",
+      resetConfirmTitle: "Ayarları sıfırla",
+      resetConfirmBody: "Tüm ayarlar varsayılana sıfırlansın mı?",
+      resetConfirmYes: "Sıfırla",
+      languageChangedAnnouncement: "Dil {language} olarak değiştirildi.",
+      fontSizeAnnouncement: "Yazı boyutu {size} olarak ayarlandı.",
+      iconSizeAnnouncement: "Simge boyutu {size} olarak ayarlandı.",
+      settingsResetAnnouncement: "Ayarlar varsayılana sıfırlandı."
     }
   }
 
