@@ -21,7 +21,7 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 - **Duplicate protection**: while typing a product name in Add mode, matching products are listed under the input; exact duplicates (same name + location) are blocked with an alert; same name at a different location asks for confirmation
 - **Missing location check**: adding without a location asks whether to continue anyway
 - **Smart inputs**: first letters of name/location/category auto-capitalize; pasted or edited values are left untouched
-- **Edit mode**: the form pulses/scrolls into view so you can see where you're editing
+- **Edit mode**: clicking Edit turns the row into inputs, highlights it, and moves focus to the Product Name field
 - **Persistence**: `localStorage`; automatic rolling snapshots (last 5) saved silently after every change
 - **Backup**: "Export to CSV" saves the **active depot** as `depotCatalog_{depotName}_D{DDMMYY}_T{HHMM}.csv` with `Name,Location,Amount,Category` columns (a warning modal reminds you only the current depot is exported); "Import from CSV" appends `Name,Location,Amount,Category` rows after a summary listing duplicate rows, missing-field rows, and rows whose missing/invalid Amount was defaulted to 1 — the `Category` column is optional (if absent, every imported row gets an empty category), duplicate detection stays name + location only; a dismissible notice repeats the skipped/defaulted details
 - **i18n**: Turkish (default) and English, auto-detected from browser language; switch inside the settings dialog

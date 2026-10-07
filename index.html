@@ -157,12 +157,6 @@ body{
 /* ---------- Header ---------- */
 header{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap}
 h1{font-size:1.35rem;display:flex;align-items:center;gap:.5rem}
-.lang-switch{display:flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:var(--surface)}
-.lang-switch button{
-  background:none;border:none;padding:.35rem .85rem;font-size:.85rem;font-weight:700;
-  color:var(--muted);cursor:pointer;min-height:44px;min-width:52px;
-}
-.lang-switch button[aria-pressed="true"]{background:var(--accent-solid);color:#fff} /* Fix (Phase 3): 5.05:1 dark */
 
 /* ---------- Search wrap & clear button ---------- */
 .search-wrap{position:relative;display:flex;align-items:center}
@@ -695,7 +689,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   <!-- Live search -->
   <div class="search-wrap" id="searchWrap">
     <input type="search" id="inpSearch" class="search-input" autocomplete="off">
-    <button type="button" id="btnClearSearch" class="clear-btn hidden" aria-label=""></button>
+    <button type="button" id="btnClearSearch" class="clear-btn hidden" aria-label=""><span aria-hidden="true">×</span></button>
   </div>
 
   <!-- Stock list -->
@@ -770,7 +764,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
     <div class="form-head">
       <!-- Fix (Phase 3): real heading — same look (1rem bold; .form-head h2 neutralizes the .card h2 margin) -->
       <h2 id="impReportTitle"></h2>
-      <button type="button" id="btnReportClose" class="icon-btn" aria-label=""></button>
+      <button type="button" id="btnReportClose" class="icon-btn" aria-label=""><span aria-hidden="true">✕</span></button>
     </div>
     <p id="impReportSummary" class="report-lines"></p>
     <ul id="impReportList" class="report-list"></ul>
@@ -780,12 +774,12 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   <section class="card hidden" id="formCard">
     <div class="form-head">
       <h2 id="formTitle" tabindex="-1"></h2>
-      <button type="button" id="btnCloseForm" class="icon-btn" aria-label=""></button>
+      <button type="button" id="btnCloseForm" class="icon-btn" aria-label=""><span aria-hidden="true">✕</span></button>
     </div>
     <form id="productForm" novalidate>
       <div class="field">
         <label for="inpName" id="lblName"></label>
-        <input type="text" id="inpName" maxlength="120" autocomplete="off" aria-describedby="nameError">
+        <input type="text" id="inpName" maxlength="120" autocomplete="off" aria-describedby="nameError" aria-invalid="false">
         <p id="nameError" class="err" role="alert"></p>
         <div id="nameSuggest" class="suggest hidden" role="listbox" aria-label=""></div>
       </div>
@@ -799,7 +793,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <!-- Fix (Phase 4): Amount field — visible label, number input, inline error linked via aria-describedby -->
       <div class="field">
         <label for="inpAmount" id="lblAmount"></label>
-        <input type="number" id="inpAmount" min="0" step="1" value="1" autocomplete="off" aria-describedby="amountError">
+        <input type="number" id="inpAmount" min="0" step="1" value="1" autocomplete="off" aria-describedby="amountError" aria-invalid="false">
         <p id="amountError" class="err" role="alert"></p>
       </div>
       <!-- Fix (category): free-text Category field. Empty is valid — no validation and
@@ -821,7 +815,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <button type="button" id="btnImportTrigger" class="btn btn-secondary"><span class="ico" aria-hidden="true">⬆&nbsp;</span><span id="lblImport"></span></button>
       <!-- Fix (Phase 3): sr-only label for the CSV file input (spec §1) -->
       <label for="inpImport" id="lblImportFile" class="sr-only"></label>
-      <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only">
+      <input type="file" id="inpImport" accept=".csv,text/csv" class="sr-only" tabindex="-1"> <!-- Fix (a11y audit C2): .sr-only + focusable landed focus on an invisible control; the visible Import button triggers it -->
     </div>
   </section>
   </main><!-- /appMain (Phase 3 landmark) -->
@@ -855,7 +849,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalText">
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
-    <input type="text" id="modalInput" class="modal-input hidden" maxlength="60" autocomplete="off">
+    <input type="text" id="modalInput" class="modal-input hidden" maxlength="60" autocomplete="off" aria-invalid="false">
     <ul id="modalList" class="modal-list hidden"></ul>
     <div class="modal-actions">
       <button type="button" id="modalCancel" class="btn btn-secondary"></button>
@@ -872,24 +866,24 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
     <div class="bulk-row">
       <input type="checkbox" id="bulkChkName">
       <label for="bulkChkName" id="bulkLblName"></label>
-      <input type="text" id="bulkInpName" maxlength="120" autocomplete="off" aria-labelledby="bulkLblName" disabled>
+      <input type="text" id="bulkInpName" maxlength="120" autocomplete="off" aria-labelledby="bulkLblName" aria-describedby="bulkErr1" aria-invalid="false" disabled>
     </div>
     <div class="bulk-row">
       <input type="checkbox" id="bulkChkLoc">
       <label for="bulkChkLoc" id="bulkLblLoc"></label>
-      <input type="text" id="bulkInpLoc" maxlength="120" autocomplete="off" aria-labelledby="bulkLblLoc" disabled>
+      <input type="text" id="bulkInpLoc" maxlength="120" autocomplete="off" aria-labelledby="bulkLblLoc" aria-describedby="bulkErr1" aria-invalid="false" disabled>
     </div>
     <div class="bulk-row">
       <input type="checkbox" id="bulkChkAmount">
       <label for="bulkChkAmount" id="bulkLblAmount"></label>
-      <input type="number" id="bulkInpAmount" min="0" step="1" autocomplete="off" aria-labelledby="bulkLblAmount" disabled>
+      <input type="number" id="bulkInpAmount" min="0" step="1" autocomplete="off" aria-labelledby="bulkLblAmount" aria-describedby="bulkErr1" aria-invalid="false" disabled>
     </div>
     <!-- Fix (category): 4th bulk field — same checkbox + label + input row pattern;
          the label (for=) names the checkbox AND the input (aria-labelledby) -->
     <div class="bulk-row">
       <input type="checkbox" id="bulkChkCategory">
       <label for="bulkChkCategory" id="bulkLblCategory"></label>
-      <input type="text" id="bulkInpCategory" maxlength="120" autocomplete="off" aria-labelledby="bulkLblCategory" disabled>
+      <input type="text" id="bulkInpCategory" maxlength="120" autocomplete="off" aria-labelledby="bulkLblCategory" aria-describedby="bulkErr1" aria-invalid="false" disabled>
     </div>
     <p id="bulkErr1" class="err" role="alert"></p>
     <p id="bulkWarnLoc" class="bulk-warn hidden"></p>
@@ -1393,6 +1387,7 @@ function openModal(opts){
   if (modalInputMode){
     el.modalInput.value = opts.inputValue;
     el.modalInput.classList.remove('hidden');
+    el.modalInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1): fresh dialog
     // Fix: give the depot-name input an accessible name (audit #2)
     el.modalInput.setAttribute('aria-label', t('depotNameLbl'));
   } else {
@@ -1425,6 +1420,7 @@ function openModal(opts){
 }
 function closeConfirm(value){
   el.overlay.classList.add('hidden');
+  el.modalInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1): closing clears the error state
   modalInputMode = false;
   if (lastFocused && lastFocused.focus){ try { lastFocused.focus(); } catch(e){} }
   lastFocused = null;
@@ -1454,6 +1450,7 @@ function autoCapitalizeFirst(inp){
 }
 function handleNameInput(){
   autoCapitalizeFirst(el.inpName);
+  setInvalid(el.inpName, false); // Fix (a11y audit C1): typing clears the error state
   renderSuggestions();
 }
 function handleLocationInput(){
@@ -1534,15 +1531,20 @@ function applyStaticText(){
   el.inpName.placeholder = t('phName');
   el.inpLoc.placeholder = t('phLoc');
   el.btnSubmit.textContent = t('add');
-  el.btnCloseForm.textContent = '\u2715'; // close X
-  el.btnCloseForm.setAttribute('aria-label', t('close'));
+  /* Fix (a11y audit N1): the close glyph now lives in an aria-hidden span in the markup */
+  var closeLbl = t('close');
+  el.btnCloseForm.setAttribute('aria-label', closeLbl);
+  el.btnCloseForm.title = closeLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
   el.lblPageSize.textContent = t('pageSizeLbl');
-  el.btnClearSearch.textContent = '\u00D7'; // clear X
-  el.btnClearSearch.setAttribute('aria-label', t('clearSearchAria'));
+  /* Fix (a11y audit N1): the clear glyph now lives in an aria-hidden span in the markup */
+  var clearLbl = t('clearSearchAria');
+  el.btnClearSearch.setAttribute('aria-label', clearLbl);
+  el.btnClearSearch.title = clearLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
   el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
   el.impReportTitle.textContent = t('impReportTitle');
-  el.btnReportClose.textContent = '\u2715';
-  el.btnReportClose.setAttribute('aria-label', t('close'));
+  /* Fix (a11y audit N1): the close glyph now lives in an aria-hidden span in the markup */
+  el.btnReportClose.setAttribute('aria-label', closeLbl);
+  el.btnReportClose.title = closeLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
   el.inpSearch.placeholder = t('searchPh');
   el.inpSearch.setAttribute('aria-label', t('searchAria'));
   updateSortHeaders(); // Fix (sortable columns): labels, indicators and aria-sort (also refreshes on language switch)
@@ -1694,7 +1696,11 @@ function renderList(){
     var btnEdit = document.createElement('button');
     btnEdit.type = 'button';
     btnEdit.className = 'icon-btn';
-    btnEdit.textContent = '\u270F\uFE0F'; // pencil
+    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
+    var editIco = document.createElement('span');
+    editIco.setAttribute('aria-hidden', 'true');
+    editIco.textContent = '\u270F\uFE0F'; // pencil
+    btnEdit.appendChild(editIco);
     /* Fix (row action tooltips): the native title mirrors the accessible name
        EXACTLY (same string) so mouse and screen reader users read the same wording */
     var editLbl = t('editAria', { name: it.name });
@@ -1705,7 +1711,11 @@ function renderList(){
     var btnDel = document.createElement('button');
     btnDel.type = 'button';
     btnDel.className = 'icon-btn del';
-    btnDel.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
+    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
+    var delIco = document.createElement('span');
+    delIco.setAttribute('aria-hidden', 'true');
+    delIco.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
+    btnDel.appendChild(delIco);
     /* Fix (row action tooltips): title mirrors the accessible name exactly */
     var delLbl = t('delAria', { name: it.name });
     btnDel.setAttribute('aria-label', delLbl);
@@ -1791,6 +1801,8 @@ function resetForm(){
   el.inpCategory.value = ''; // Fix (category): Category resets to empty (serial entry)
   el.nameError.textContent = ''; // Fix (Phase 5): clear in place — reserved area stays
   el.amountError.textContent = '';
+  setInvalid(el.inpName, false);   // Fix (a11y audit C1): reset clears the error state
+  setInvalid(el.inpAmount, false); // Fix (a11y audit C1)
   hideSuggestions();
 }
 function findById(id){
@@ -1833,15 +1845,18 @@ async function saveInlineEdit(){
   var name = nameInput.value.trim();
   var location = locInput.value.trim();
   var category = catInput.value.trim(); // Fix (category): free text, empty allowed
-  if (!name){ nameInput.focus(); return; } // empty name: stay in edit mode
+  if (!name){ setInvalid(nameInput, true); nameInput.focus(); return; } // empty name: stay in edit mode (a11y audit C1)
   var amountRes = parseAmount(amountInput.value);
   if (!amountRes.ok){
     // Fix (Phase 5): Add-form uses the reserved area; the edit row keeps its Phase 4 toggling
     var ea = document.getElementById('editAmountError');
     if (ea){ ea.textContent = t('amountInvalid'); ea.classList.remove('hidden'); }
+    setInvalid(amountInput, true); // Fix (a11y audit C1): expose the error state to AT
     amountInput.focus();
     return;
   }
+  setInvalid(nameInput, false);   // Fix (a11y audit C1): cleared
+  setInvalid(amountInput, false); // Fix (a11y audit C1): cleared
   // Duplicate checks (same rules as the add flow), excluding this product
   var nl = name.toLowerCase();
   var ll = location.toLowerCase();
@@ -1912,7 +1927,8 @@ function buildEditRow(it){
   nameInput.value = it.name;
   nameInput.setAttribute('aria-label', t('nameLbl'));
   nameInput.setAttribute('aria-describedby', 'hintInlineEdit'); // Fix (Phase 3): link keyboard hint
-  nameInput.addEventListener('input', function(){ autoCapitalizeFirst(nameInput); });
+  nameInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
+  nameInput.addEventListener('input', function(){ autoCapitalizeFirst(nameInput); setInvalid(nameInput, false); });
   nameInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
@@ -1934,7 +1950,8 @@ function buildEditRow(it){
   locInput.value = it.location;
   locInput.setAttribute('aria-label', t('locLbl'));
   locInput.setAttribute('aria-describedby', 'hintInlineEdit'); // Fix (Phase 3): link keyboard hint
-  locInput.addEventListener('input', function(){ autoCapitalizeFirst(locInput); });
+  locInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
+  locInput.addEventListener('input', function(){ autoCapitalizeFirst(locInput); setInvalid(locInput, false); });
   locInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
@@ -1958,6 +1975,8 @@ function buildEditRow(it){
   amountInput.value = it.amount;
   amountInput.setAttribute('aria-label', t('amount'));
   amountInput.setAttribute('aria-describedby', 'editAmountError hintInlineEdit');
+  amountInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
+  amountInput.addEventListener('input', function(){ setInvalid(amountInput, false); }); // Fix (a11y audit C1)
   amountInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
@@ -1989,7 +2008,8 @@ function buildEditRow(it){
   catInput.value = it.category; // empty category => empty input (the "-" is display-only)
   catInput.setAttribute('aria-label', t('category'));
   catInput.setAttribute('aria-describedby', 'hintInlineEdit');
-  catInput.addEventListener('input', function(){ autoCapitalizeFirst(catInput); }); // Fix (settings task)
+  catInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
+  catInput.addEventListener('input', function(){ autoCapitalizeFirst(catInput); setInvalid(catInput, false); }); // Fix (settings task)
   catInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
@@ -2030,6 +2050,13 @@ function buildEditRow(it){
   row.appendChild(hint);
   return row;
 }
+/* Fix (a11y audit C1): mirror a field's error state for assistive tech.
+   aria-invalid reflects whether the field currently holds an error; the visible
+   error text and red-border behaviour are unchanged. */
+function setInvalid(input, on){
+  if (!input) return;
+  input.setAttribute('aria-invalid', on ? 'true' : 'false');
+}
 async function handleFormSubmit(ev){
   ev.preventDefault();
   var name = el.inpName.value.trim();
@@ -2037,17 +2064,21 @@ async function handleFormSubmit(ev){
   var category = el.inpCategory.value.trim(); // Fix (category): free text, empty allowed
   if (!name){
     el.nameError.textContent = t('nameReq'); // Fix (Phase 5): error area always reserved — text only, no display toggling
+    setInvalid(el.inpName, true); // Fix (a11y audit C1): expose the error state to AT
     el.inpName.focus();
     return;
   }
   el.nameError.textContent = '';
+  setInvalid(el.inpName, false); // Fix (a11y audit C1): cleared
   var amountRes = parseAmount(el.inpAmount.value);
   if (!amountRes.ok){
     el.amountError.textContent = t('amountInvalid'); // Fix (Phase 5): text only — reserved area prevents layout shift
+    setInvalid(el.inpAmount, true); // Fix (a11y audit C1): expose the error state to AT
     el.inpAmount.focus();
     return;
   }
   el.amountError.textContent = '';
+  setInvalid(el.inpAmount, false); // Fix (a11y audit C1): cleared
   hideSuggestions();
   if (state.editingId === null){
     var nl = name.toLowerCase();
@@ -2546,8 +2577,14 @@ function renderDepotMenu(){
     var eb = document.createElement('button');
     eb.type = 'button';
     eb.className = 'icon-btn';
-    eb.textContent = '\u270F\uFE0F'; // pencil
-    eb.setAttribute('aria-label', t('editDepotAria', { name: dep.name }));
+    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
+    var ebIco = document.createElement('span');
+    ebIco.setAttribute('aria-hidden', 'true');
+    ebIco.textContent = '\u270F\uFE0F'; // pencil
+    eb.appendChild(ebIco);
+    var ebLbl = t('editDepotAria', { name: dep.name });
+    eb.setAttribute('aria-label', ebLbl);
+    eb.title = ebLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
     eb.addEventListener('click', function(ev){
       ev.stopPropagation();
       closeDepotMenu();
@@ -2558,8 +2595,14 @@ function renderDepotMenu(){
     var db = document.createElement('button');
     db.type = 'button';
     db.className = 'icon-btn del';
-    db.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
-    db.setAttribute('aria-label', t('deleteDepotAria', { name: dep.name }));
+    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
+    var dbIco = document.createElement('span');
+    dbIco.setAttribute('aria-hidden', 'true');
+    dbIco.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
+    db.appendChild(dbIco);
+    var dbLbl = t('deleteDepotAria', { name: dep.name });
+    db.setAttribute('aria-label', dbLbl);
+    db.title = dbLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
     db.addEventListener('click', function(ev){
       ev.stopPropagation();
       closeDepotMenu();
@@ -2624,7 +2667,7 @@ function selectDepot(id){
 function openAddDepotModal(){
   askInput({ title: t('addDepotTitle') }).then(function(name){
     if (name === null) return;                 // cancelled
-    if (!name){ showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; }
+    if (!name){ setInvalid(el.modalInput, true); showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; } // Fix (a11y audit C1)
     var id = state.nextDepotId++;
     state.depots.push({ id: id, name: name, items: [] });
     state.activeDepotId = id;
@@ -2650,7 +2693,7 @@ function openEditDepot(id){
   if (!dep) return;
   askInput({ title: t('editDepotTitle'), value: dep.name }).then(function(name){
     if (name === null) return;
-    if (!name){ showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; }
+    if (!name){ setInvalid(el.modalInput, true); showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; } // Fix (a11y audit C1)
     dep.name = name;
     persist(); snapshotCurrentData();
     render();
@@ -2720,7 +2763,11 @@ function iconName(emoji){
 }
 function syncDepotIconUI(){
   if (el.depotIconEmoji) el.depotIconEmoji.textContent = depotIconOf(state.activeDepotId);
-  if (el.btnDepotIcon) el.btnDepotIcon.setAttribute('aria-label', t('iconButtonLabel'));
+  if (el.btnDepotIcon){
+    var iconLbl = t('iconButtonLabel');
+    el.btnDepotIcon.setAttribute('aria-label', iconLbl);
+    el.btnDepotIcon.title = iconLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
+  }
 }
 /* Fix (favicon on load): generation lives in the shared HEAD helper
    (window.dcSetEmojiFavicon, defined right after the favicon link); this wrapper only
@@ -2745,10 +2792,16 @@ function renderIconGrid(){
     b.type = 'button';
     var isSel = (em === pending);
     b.className = 'icon-pick' + (em === applied ? ' applied' : '') + (isSel ? ' selected' : '');
-    b.textContent = em;
+    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
+    var ico = document.createElement('span');
+    ico.setAttribute('aria-hidden', 'true');
+    ico.textContent = em;
+    b.appendChild(ico);
     b.setAttribute('data-idx', String(idx));
     var nm = iconName(em);
-    b.setAttribute('aria-label', nm + (em === applied ? t('iconCurrentSuffix') : '') + (isSel ? t('iconSelectedSuffix') : ''));
+    var lbl = nm + (em === applied ? t('iconCurrentSuffix') : '') + (isSel ? t('iconSelectedSuffix') : '');
+    b.setAttribute('aria-label', lbl);
+    b.title = lbl; // Fix (a11y audit N2): tooltip mirrors the accessible name
     b.setAttribute('aria-pressed', isSel ? 'true' : 'false'); // pending state for screen readers
     if (em === applied) b.setAttribute('aria-current', 'true'); // applied state
     b.addEventListener('click', function(){ selectPendingIcon(em); });
@@ -2768,8 +2821,9 @@ function selectPendingIcon(emoji){
     tiles[i].classList.toggle('selected', isSel);
     tiles[i].setAttribute('aria-pressed', isSel ? 'true' : 'false');
     var nm = iconName(em);
-    tiles[i].setAttribute('aria-label',
-      nm + (em === applied ? t('iconCurrentSuffix') : '') + (isSel ? t('iconSelectedSuffix') : ''));
+    var lbl = nm + (em === applied ? t('iconCurrentSuffix') : '') + (isSel ? t('iconSelectedSuffix') : '');
+    tiles[i].setAttribute('aria-label', lbl);
+    tiles[i].title = lbl; // Fix (a11y audit N2): keep the tooltip in sync
   }
   announce(t('iconSelectedAnnouncement', { emojiName: iconName(emoji) })); // polite
 }
@@ -2887,6 +2941,13 @@ var SHORTCUT_SECTIONS = [
     ['keyTab', 'ksModalTabDesc'],
     ['keyEnter', 'ksModalEnterDesc'],
     ['keyEsc', 'ksModalEscDesc']
+  ]},
+  /* Fix (a11y audit I1): icon-picker keyboard navigation */
+  { title: 'ksIconPicker', rows: [
+    ['keyArrows4', 'ksIconArrowsDesc'],
+    ['keyEnterSpace', 'ksIconSelectDesc'],
+    ['keyTab', 'ksIconTabDesc'],
+    ['keyEsc', 'ksIconEscDesc']
   ]}
 ];
 function buildShortcutsBody(){
@@ -3127,6 +3188,11 @@ function bulkResetFields(){
   el.bulkErr1.textContent = '';
   el.bulkWarnLoc.classList.add('hidden');
   el.bulkWarnCat.classList.add('hidden'); // Fix (category)
+  /* Fix (a11y audit C1): a freshly opened dialog has no invalid fields */
+  setInvalid(el.bulkInpName, false);
+  setInvalid(el.bulkInpLoc, false);
+  setInvalid(el.bulkInpAmount, false);
+  setInvalid(el.bulkInpCategory, false);
   bulkToggleInputs();
 }
 function bulkFocusAfterClose(){
@@ -3167,6 +3233,8 @@ function handleBulkContinue(){
   el.bulkErr1.textContent = '';
   el.bulkWarnLoc.classList.add('hidden');
   el.bulkWarnCat.classList.add('hidden'); // Fix (category)
+  setInvalid(el.bulkInpName, false);   // Fix (a11y audit C1): re-validate from a clean state
+  setInvalid(el.bulkInpAmount, false);
   if (!anyChecked){
     el.bulkErr1.textContent = t('bulkErrNoField'); // role=alert announces it
     el.bulkChkName.focus();
@@ -3178,10 +3246,12 @@ function handleBulkContinue(){
     var nm = el.bulkInpName.value.trim();
     if (!nm){
       el.bulkErr1.textContent = t('bulkErrName');
+      setInvalid(el.bulkInpName, true); // Fix (a11y audit C1)
       el.bulkInpName.focus();
       return;
     }
     changes.name = nm;
+    setInvalid(el.bulkInpName, false); // Fix (a11y audit C1)
   }
   if (el.bulkChkLoc.checked){
     changes.location = el.bulkInpLoc.value.trim();
@@ -3199,10 +3269,12 @@ function handleBulkContinue(){
       var a = parseAmount(el.bulkInpAmount.value); // shared digits-only validation
       if (!a.ok || a.value < 0){
         el.bulkErr1.textContent = t('amountInvalid');
+        setInvalid(el.bulkInpAmount, true); // Fix (a11y audit C1)
         el.bulkInpAmount.focus();
         return;
       }
       changes.amount = a.value;
+      setInvalid(el.bulkInpAmount, false); // Fix (a11y audit C1)
     }
   }
   if (el.bulkChkCategory.checked){ // Fix (category): free text — empty means "clear it"
@@ -3501,6 +3573,7 @@ function bindEvents(){
     announce(t('itemsPerPageChanged', { n: n }));
   });
   el.inpName.addEventListener('input', handleNameInput);
+  el.inpAmount.addEventListener('input', function(){ setInvalid(el.inpAmount, false); }); // Fix (a11y audit C1): typing clears
   el.inpName.addEventListener('blur', function(){ setTimeout(hideSuggestions, 120); });
   el.inpName.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
@@ -3637,6 +3710,7 @@ function bindEvents(){
         el.bulkContinue.click(); // Enter in a bulk field submits step 1 (mirrors the depot modal)
       }
     });
+    inp.addEventListener('input', function(){ setInvalid(inp, false); }); // Fix (a11y audit C1): typing clears
   });
   el.bulkContinue.addEventListener('click', handleBulkContinue);
   el.bulkCancel1.addEventListener('click', closeBulk1);
@@ -3673,6 +3747,7 @@ function bindEvents(){
   });
   el.modalOk.addEventListener('click', function(){ closeConfirm(true); });
   el.modalCancel.addEventListener('click', function(){ closeConfirm(false); });
+  el.modalInput.addEventListener('input', function(){ setInvalid(el.modalInput, false); }); // Fix (a11y audit C1): typing clears
   el.modalInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
