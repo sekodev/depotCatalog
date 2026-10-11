@@ -452,6 +452,12 @@
 <script src="js/favicon.js"></script>
 <script src="js/input.js"></script>
 <script src="js/validation.js"></script>
+<script src="js/search.js"></script>
+<script src="js/pagination.js"></script>
+<script src="js/list.js"></script>
+<script src="js/sort.js"></script>
+<script src="js/items.js"></script>
+<script src="js/inline-edit.js"></script>
 <script>
 (function(){
 'use strict';
@@ -464,6 +470,7 @@ var LS_LANG = DC.const.LS_LANG;
 var activeDepot = DC.state.activeDepot;
 var announce = DC.announce.announce;
 var applyFavicon = DC.favicon.applyFavicon;
+var applyStaticText = DC.list.applyStaticText;
 var applyTheme = DC.theme.applyTheme;
 var askConfirm = DC.modal.askConfirm;
 var askInput = DC.modal.askInput;
@@ -471,11 +478,15 @@ var autoCapitalizeFirst = DC.input.autoCapitalizeFirst;
 var checkStorage = DC.store.checkStorage;
 var closeConfirm = DC.modal.closeConfirm;
 var currentTheme = DC.theme.currentTheme;
+var cycleSort = DC.sort.cycleSort;
 var detectLang = DC.i18n.detectLang;
 var detectLangFromDevice = DC.i18n.detectLangFromDevice;
 var el = DC.el;
+var findById = DC.items.findById;
 var findDepot = DC.state.findDepot;
+var getFilteredItems = DC.search.getFilteredItems;
 var getLang = DC.i18n.getLang;
+var handleFormSubmit = DC.items.handleFormSubmit;
 var handleLocationInput = DC.input.handleLocationInput;
 var handleNameInput = DC.input.handleNameInput;
 var hideSuggestions = DC.input.hideSuggestions;
@@ -483,581 +494,40 @@ var languagesValid = DC.i18n.languagesValid;
 var loadState = DC.store.loadState;
 var parseAmount = DC.validate.parseAmount;
 var persist = DC.store.persist;
+var render = DC.list.render;
+var renderList = DC.list.renderList;
+var resetForm = DC.items.resetForm;
 var setInvalid = DC.validate.setInvalid;
 var setLang = DC.i18n.setLang;
-var showAlert = DC.modal.showAlert;
 var showSaveIndicator = DC.store.showSaveIndicator;
 var showToast = DC.modal.showToast;
 var snapshotCurrentData = DC.backup.snapshotCurrentData;
 var state = DC.state;
 var syncItemsRef = DC.state.syncItemsRef;
-var syncThemeToggle = DC.theme.syncThemeToggle;
 var t = DC.i18n.t;
 var toggleTheme = DC.theme.toggleTheme;
+var visiblePageItems = DC.pagination.visiblePageItems;
 
 /* TEMPORARY migration bridge — removed in the final commit.
    Publishes the functions still defined below that already-extracted
    modules call as DC.<ns>.<fn>() at run time. */
+DC.batch = DC.batch || {};
+DC.category = DC.category || {};
+DC.depot = DC.depot || {};
 DC.icons = DC.icons || {};
-DC.list = DC.list || {};
+DC.settings = DC.settings || {};
+DC.settings.applySettingsText = applySettingsText;
+DC.category.catModalIsOpen = catModalIsOpen;
 DC.icons.depotIconOf = depotIconOf;
-DC.list.render = render;
+DC.depot.depotMenuIsOpen = depotMenuIsOpen;
+DC.category.fillCategorySelect = fillCategorySelect;
+DC.category.refreshCategorySelects = refreshCategorySelects;
+DC.depot.renderDepotMenu = renderDepotMenu;
+DC.category.setupCategorySelect = setupCategorySelect;
+DC.batch.syncBatchUI = syncBatchUI;
+DC.icons.syncDepotIconUI = syncDepotIconUI;
+DC.batch.toggleSelect = toggleSelect;
 
-
-/* ================= Rendering ================= */
-function applyStaticText(){
-  document.documentElement.lang = state.lang;
-  /* Fix (dynamic page title): "{depot} - {app}" in the current language; no active
-     depot (edge case) => app name only. Every title-affecting event (load, depot
-     switch/rename/create/delete-fallback, language change) re-renders through here,
-     so this single update point covers them all. The static <title> in <head> remains
-     the brief pre-run fallback. */
-  var titleDep = activeDepot();
-  document.title = titleDep
-    ? t('pageTitlePattern', { depot: titleDep.name, app: t('appName') })
-    : t('appName');
-  // Depot selector
-  var dep = activeDepot();
-  el.depotSelectName.textContent = dep ? dep.name : '\u2014';
-  el.depotSelect.setAttribute('aria-label', t('selectAria'));
-  el.depotMenu.setAttribute('aria-label', t('selectAria'));
-  syncDepotIconUI(); // Fix (depot icon picker): icon + its aria-label (kept language-aware)
-  if (depotMenuIsOpen()) renderDepotMenu(); // refresh labels while open
-  // No depot => hide item-related UI until one is created
-  var hasDepot = !!dep;
-  el.btnToggleAdd.classList.toggle('hidden', !hasDepot);
-  el.toolbar.classList.toggle('hidden', !hasDepot);
-  el.listFoot.classList.toggle('hidden', !hasDepot); // Fix (list footer): hides with the toolbar when no depot exists
-  el.searchWrap.classList.toggle('hidden', !hasDepot);
-  if (!hasDepot){
-    el.formCard.classList.add('hidden');
-    el.btnToggleAdd.classList.remove('invisible');
-  }
-  el.btnToggleAdd.textContent = t('addNewBtn');
-  el.formTitle.textContent = t('addTitle');
-  el.lblName.textContent = t('nameLbl');
-  el.lblLoc.textContent = t('locLbl');
-  el.inpName.placeholder = t('phName');
-  el.inpLoc.placeholder = t('phLoc');
-  el.btnSubmit.textContent = t('add');
-  /* Fix (a11y audit N1): the close glyph now lives in an aria-hidden span in the markup */
-  var closeLbl = t('close');
-  el.btnCloseForm.setAttribute('aria-label', closeLbl);
-  el.btnCloseForm.title = closeLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
-  el.lblPageSize.textContent = t('pageSizeLbl');
-  /* Fix (a11y audit N1): the clear glyph now lives in an aria-hidden span in the markup */
-  var clearLbl = t('clearSearchAria');
-  el.btnClearSearch.setAttribute('aria-label', clearLbl);
-  el.btnClearSearch.title = clearLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
-  el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
-  el.impReportTitle.textContent = t('impReportTitle');
-  /* Fix (a11y audit N1): the close glyph now lives in an aria-hidden span in the markup */
-  el.btnReportClose.setAttribute('aria-label', closeLbl);
-  el.btnReportClose.title = closeLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
-  el.inpSearch.placeholder = t('searchPh');
-  el.inpSearch.setAttribute('aria-label', t('searchAria'));
-  updateSortHeaders(); // Fix (sortable columns): labels, indicators and aria-sort (also refreshes on language switch)
-  el.itemCount.textContent = t('itemCount', { n: state.items.length });
-  el.lblExport.textContent = t('download');
-  el.lblImport.textContent = t('upload');
-  el.skipLink.textContent = t('skipToMain');
-  /* Fix (settings): the standalone language selector was replaced by the settings
-     gear; its labels/options are refreshed by applySettingsText() at the end. */
-  el.stockListTitle.textContent = t('stockListTitle'); // Fix (Phase 3): sr-only h2 label
-  el.lblImportFile.textContent = t('importFileLbl'); // Fix (Phase 3): sr-only file-input label
-  el.pagination.setAttribute('aria-label', t('paginationAria')); // Fix (Phase 3): nav keeps its label even while hidden (renderPagination refreshes it when shown)
-  el.lblAmount.textContent = t('amount'); // Fix (Phase 4): Amount label + column header
-  el.colAmount.textContent = t('amount');
-  el.lblCategory.textContent = t('category'); // Fix (category): Add-form field label
-  el.selectAll.setAttribute('aria-label', t('selectAllAria')); // Fix (batch select)
-  /* Fix (bulk edit): modal field labels — each label names BOTH its checkbox (for=)
-     and its input (aria-labelledby), satisfying "all inputs must have labels" */
-  el.bulkLblName.textContent = t('bulkFieldName');
-  el.bulkLblLoc.textContent = t('locLbl');
-  el.bulkLblAmount.textContent = t('amount');
-  el.bulkLblCategory.textContent = t('category'); // Fix (category): reuses the field-label key, like locLbl/amount
-  /* Fix (new category modal): title, label, helper text and buttons follow the language */
-  el.catModalTitle.textContent = t('catModalTitle');
-  el.catModalLbl.textContent = t('category');
-  el.catModalHint.textContent = t('catModalHint');
-  el.catModalCancel.textContent = t('cancel');
-  el.catModalSave.textContent = t('save');
-  el.disclaimerText.textContent = t('disclaimer');
-  el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
-  el.ghLink.setAttribute('aria-label', t('githubAria'));
-  el.ghLink.title = t('githubAria');
-  syncThemeToggle();
-  el.btnShortcuts.setAttribute('aria-label', t('shortcutsAria'));
-  el.btnShortcuts.title = t('shortcutsAria');
-  el.hintAddJump.textContent = t('hintAddJump');
-  el.hintAddJump.classList.toggle('hidden', !hasDepot);
-  applySettingsText(); // Fix (settings): labels + options for the settings modal
-  refreshCategorySelects(); // Fix (category dropdown): re-localize + re-derive the option lists
-}
-function getFilteredItems(){
-  var q = state.filter.trim().toLowerCase();
-  var list = state.items.slice();
-  if (q){
-    list = list.filter(function(it){
-      /* Fix (category): search matches name, location AND category. Amount stays
-         non-searchable (numbers are not part of the text filter). */
-      return it.name.toLowerCase().indexOf(q) !== -1 ||
-             it.location.toLowerCase().indexOf(q) !== -1 ||
-             it.category.toLowerCase().indexOf(q) !== -1;
-    });
-  }
-  /* Fix (sortable columns): apply the active sort AFTER filtering (never bypasses
-     search), case-insensitive via locale-aware comparison in the current language. */
-  if (state.sort.key){
-    var k = state.sort.key;
-    var m = (state.sort.dir === 'desc') ? -1 : 1;
-    list.sort(function(x, y){ return x[k].localeCompare(y[k], state.lang) * m; });
-  }
-  return list;
-}
-function makeCell(text, cls){
-  var d = document.createElement('div');
-  d.className = cls;
-  d.textContent = text; // textContent => XSS-safe
-  return d;
-}
-/* Fix (batch select): leading checkbox cell for a row. In edit mode the checkbox is
-   disabled (the row cannot be selected while being edited). */
-function makeCheckCell(it, disabled){
-  var wrap = document.createElement('div');
-  wrap.className = 'check';
-  var cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.className = 'row-check';
-  cb.setAttribute('data-id', String(it.id));
-  cb.checked = !!state.selectedIds[it.id];
-  if (disabled) cb.disabled = true;
-  cb.setAttribute('aria-label', t('selectItemAria', { name: it.name, location: it.location || '\u2014' }));
-  cb.addEventListener('change', function(){ toggleSelect(it.id); });
-  wrap.appendChild(cb);
-  return wrap;
-}
-function renderList(){
-  var body = el.listBody;
-  body.innerHTML = '';
-  syncBatchUI(); // Fix (batch select): prune selection to the visible page + sync select-all/button
-  var dep = activeDepot();
-  if (!dep){
-    // No depot exists at all
-    var nd = document.createElement('div');
-    nd.className = 'empty-state';
-    nd.textContent = t('noDepotMsg');
-    body.appendChild(nd);
-    hidePagination();
-    return;
-  }
-  if (dep.items.length === 0){
-    var empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = t('emptyList', { depotName: dep.name });
-    body.appendChild(empty);
-    hidePagination();
-    return;
-  }
-  var filtered = getFilteredItems();
-  if (filtered.length === 0){
-    var none = document.createElement('div');
-    none.className = 'empty-state';
-    none.textContent = t('noResults', { query: state.filter.trim() });
-    body.appendChild(none);
-    hidePagination();
-    return;
-  }
-  var totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
-  if (state.page > totalPages) state.page = totalPages;   // self-heal after delete
-  if (state.page < 1) state.page = 1;
-  var startIdx = (state.page - 1) * state.pageSize;
-  filtered.slice(startIdx, startIdx + state.pageSize).forEach(function(it){
-    if (it.id === state.editingId){
-      body.appendChild(buildEditRow(it));
-      return;
-    }
-    var row = document.createElement('div');
-    row.className = 'row';
-    row.setAttribute('role', 'listitem'); // a11y: list semantics (see #listBody comment)
-    row.setAttribute('data-id', String(it.id)); // a11y: enables focus return after inline save/cancel
-    row.appendChild(makeCheckCell(it)); // Fix (batch select): leading checkbox
-    row.appendChild(makeCell(it.name, 'name'));
-    // Fix (dash for empty location): display-only placeholder; storage keeps ''
-    row.appendChild(makeCell(it.location || '-', 'loc'));
-    // Fix (field order): Category cell now precedes Amount. Empty category shows "-"
-    // (display only; the stored value stays ''). Same rule as an empty Location.
-    row.appendChild(makeCell(it.category || '-', 'category'));
-    // Fix (Phase 4): Amount cell with sr-only prefix so SR users hear "Amount: 3"
-    var amtCell = document.createElement('div');
-    amtCell.className = 'amount';
-    var amtLbl = document.createElement('span');
-    amtLbl.className = 'sr-only';
-    amtLbl.textContent = t('amount') + ': ';
-    amtCell.appendChild(amtLbl);
-    amtCell.appendChild(document.createTextNode(String(it.amount)));
-    row.appendChild(amtCell);
-
-    var actions = document.createElement('div');
-    actions.className = 'actions';
-
-    var btnEdit = document.createElement('button');
-    btnEdit.type = 'button';
-    btnEdit.className = 'icon-btn';
-    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
-    var editIco = document.createElement('span');
-    editIco.setAttribute('aria-hidden', 'true');
-    editIco.textContent = '\u270F\uFE0F'; // pencil
-    btnEdit.appendChild(editIco);
-    /* Fix (row action tooltips): the native title mirrors the accessible name
-       EXACTLY (same string) so mouse and screen reader users read the same wording */
-    var editLbl = t('editAria', { name: it.name });
-    btnEdit.setAttribute('aria-label', editLbl);
-    btnEdit.title = editLbl;
-    btnEdit.addEventListener('click', function(){ startEdit(it.id); });
-
-    var btnDel = document.createElement('button');
-    btnDel.type = 'button';
-    btnDel.className = 'icon-btn del';
-    /* Fix (a11y audit N1): decorative emoji wrapped in an aria-hidden span */
-    var delIco = document.createElement('span');
-    delIco.setAttribute('aria-hidden', 'true');
-    delIco.textContent = '\uD83D\uDDD1\uFE0F'; // wastebasket
-    btnDel.appendChild(delIco);
-    /* Fix (row action tooltips): title mirrors the accessible name exactly */
-    var delLbl = t('delAria', { name: it.name });
-    btnDel.setAttribute('aria-label', delLbl);
-    btnDel.title = delLbl;
-    btnDel.addEventListener('click', function(){ handleDelete(it.id); });
-
-    actions.appendChild(btnEdit);
-    actions.appendChild(btnDel);
-    row.appendChild(actions);
-    body.appendChild(row);
-  });
-  renderPagination(totalPages);
-}
-/* ---------- Pagination controls ---------- */
-function hidePagination(){
-  el.pagination.classList.add('hidden');
-  el.pagination.innerHTML = '';
-}
-function renderPagination(totalPages){
-  var nav = el.pagination;
-  nav.innerHTML = '';
-  if (totalPages <= 1){ nav.classList.add('hidden'); return; }
-  nav.classList.remove('hidden');
-  nav.setAttribute('aria-label', t('paginationAria'));
-
-  function mkBtn(label, page, opts){
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'page-btn' + (opts && opts.active ? ' active' : '');
-    b.innerHTML = label; // trusted static content (translated labels + &#8249;/&#8250;)
-    if (opts && opts.active){
-      b.setAttribute('aria-current', 'page');
-      b.setAttribute('aria-label', t('pageAria', { n: page }));
-    } else {
-      b.setAttribute('aria-label', t('pageAria', { n: page }));
-    }
-    if (opts && opts.disabled) b.disabled = true;
-    else b.setAttribute('data-page', String(page));
-    return b;
-  }
-  function mkEllipsis(){
-    var s = document.createElement('span');
-    s.className = 'page-ellipsis';
-    s.textContent = '\u2026';
-    return s;
-  }
-
-  var prev = mkBtn('<span class="ico">&#8249;</span> ' + t('prevPage'), state.page - 1, { disabled: state.page === 1 });
-  prev.setAttribute('aria-label', t('prevPageAria'));
-  nav.appendChild(prev);
-
-  var numbers = [];
-  if (totalPages <= 7){
-    for (var p = 1; p <= totalPages; p++) numbers.push(p);
-  } else {
-    numbers.push(1);
-    var lo = Math.max(2, state.page - 1);
-    var hi = Math.min(totalPages - 1, state.page + 1);
-    if (lo > 2) numbers.push(0); // 0 => ellipsis
-    for (var q = lo; q <= hi; q++) numbers.push(q);
-    if (hi < totalPages - 1) numbers.push(-1); // -1 => ellipsis
-    numbers.push(totalPages);
-  }
-  numbers.forEach(function(p){
-    if (p === 0 || p === -1){ nav.appendChild(mkEllipsis()); return; }
-    nav.appendChild(mkBtn(String(p), p, { active: p === state.page }));
-  });
-
-  var next = mkBtn(t('nextPage') + ' <span class="ico">&#8250;</span>', state.page + 1, { disabled: state.page === totalPages });
-  next.setAttribute('aria-label', t('nextPageAria'));
-  nav.appendChild(next);
-}
-function render(){
-  applyStaticText();
-  renderList();
-}
-
-/* ================= CRUD ================= */
-function resetForm(){
-  el.inpName.value = '';
-  el.inpLoc.value = '';
-  el.inpAmount.value = '1'; // Fix (Phase 4): Amount resets to default 1 (serial entry)
-  fillCategorySelect(el.inpCategory, ''); // Fix (category dropdown): back to "Add new category"; also refreshes the options so a just-saved category is offered here
-  el.nameError.textContent = ''; // Fix (Phase 5): clear in place — reserved area stays
-  el.amountError.textContent = '';
-  setInvalid(el.inpName, false);   // Fix (a11y audit C1): reset clears the error state
-  setInvalid(el.inpAmount, false); // Fix (a11y audit C1)
-  hideSuggestions();
-}
-function findById(id){
-  for (var i = 0; i < state.items.length; i++){
-    if (state.items[i].id === id) return state.items[i];
-  }
-  return null;
-}
-function startEdit(id){
-  var it = findById(id);
-  if (!it) return;
-  state.editingId = id;
-  delete state.selectedIds[id]; // Fix (batch select): a row in edit mode cannot stay selected
-  renderList();
-  var nameInput = document.querySelector('#listBody .row.editing .edit-name');
-  if (nameInput){
-    nameInput.focus();
-    try { nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length); } catch(e){}
-  }
-  announce(t('editingProduct', { name: it.name }));
-}
-function cancelInlineEdit(){
-  var editedId = state.editingId; // capture before clearing (for focus return)
-  state.editingId = null;
-  renderList();
-  announce(t('editCanceled'));
-  // a11y: return focus to the Edit button of the row that was being edited
-  if (editedId !== null){
-    var btn = document.querySelector('#listBody .row[data-id="' + editedId + '"] .icon-btn');
-    if (btn){ try { btn.focus(); } catch(e){} }
-  }
-}
-async function saveInlineEdit(){
-  var it = findById(state.editingId);
-  var nameInput = document.querySelector('#listBody .row.editing .edit-name');
-  var locInput = document.querySelector('#listBody .row.editing .edit-loc');
-  var amountInput = document.querySelector('#listBody .row.editing .edit-amount');
-  var catInput = document.querySelector('#listBody .row.editing .edit-category'); // Fix (category)
-  if (!it || !nameInput || !locInput || !amountInput || !catInput){ state.editingId = null; renderList(); return; }
-  var name = nameInput.value.trim();
-  var location = locInput.value.trim();
-  var category = catInput.value.trim(); // Fix (category): free text, empty allowed
-  if (!name){ setInvalid(nameInput, true); nameInput.focus(); return; } // empty name: stay in edit mode (a11y audit C1)
-  var amountRes = parseAmount(amountInput.value);
-  if (!amountRes.ok){
-    // Fix (Phase 5): Add-form uses the reserved area; the edit row keeps its Phase 4 toggling
-    var ea = document.getElementById('editAmountError');
-    if (ea){ ea.textContent = t('amountInvalid'); ea.classList.remove('hidden'); }
-    setInvalid(amountInput, true); // Fix (a11y audit C1): expose the error state to AT
-    amountInput.focus();
-    return;
-  }
-  setInvalid(nameInput, false);   // Fix (a11y audit C1): cleared
-  setInvalid(amountInput, false); // Fix (a11y audit C1): cleared
-  // Duplicate checks (same rules as the add flow), excluding this product
-  var nl = name.toLowerCase();
-  var ll = location.toLowerCase();
-  var exact = false, sameName = false;
-  for (var i = 0; i < state.items.length; i++){
-    var other = state.items[i];
-    if (other.id === it.id) continue; // do not flag itself
-    if (other.name.toLowerCase() === nl){
-      sameName = true;
-      if (other.location.toLowerCase() === ll){ exact = true; break; }
-    }
-  }
-  if (exact){
-    // Same name AND same location => blocked, stay in edit mode
-    showAlert({
-      title: t('dupExactTitle'),
-      message: t('dupExactMsg'),
-      danger: true
-    });
-    return;
-  }
-  if (sameName){
-    // Same name, different location => warn but allow
-    var go1 = await askConfirm({
-      title: t('dupWarnTitle'),
-      message: t('dupWarnMsgEdit'),
-      okLabel: t('save'),
-      danger: true
-    });
-    if (!go1) return; // stay in edit mode, do not save
-  }
-  if (!location){
-    // Fix: apply the same missing-location confirm as the add flow (audit #4)
-    var go2 = await askConfirm({
-      title: t('locMissingTitle'),
-      message: t('locMissingMsg', { name: name }),
-      okLabel: t('contAnyway'),
-      danger: false
-    });
-    if (!go2){ locInput.focus(); return; } // stay in edit mode
-  }
-  it.name = name;
-  it.location = location;
-  it.amount = amountRes.value; // Fix (Phase 4): persist edited amount
-  it.category = category;      // Fix (category): persist edited category (no validation)
-  state.editingId = null;
-  persist(); snapshotCurrentData();
-  renderList();
-  showSaveIndicator();
-  showToast(t('updated'), 'success');
-  announce(t('changesSaved'));
-  // a11y: return focus to the Edit button of the saved row
-  var editBtn = document.querySelector('#listBody .row[data-id="' + it.id + '"] .icon-btn');
-  if (editBtn){ try { editBtn.focus(); } catch(e){} }
-}
-function buildEditRow(it){
-  var row = document.createElement('div');
-  row.className = 'row editing';
-  row.setAttribute('role', 'listitem'); // a11y: list semantics (see #listBody comment)
-  row.appendChild(makeCheckCell(it, true)); // Fix (batch select): disabled while this row is edited
-
-  var nameWrap = document.createElement('div');
-  nameWrap.className = 'edit-field';
-  var nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.maxLength = 120;
-  nameInput.className = 'edit-input edit-name';
-  nameInput.value = it.name;
-  nameInput.setAttribute('aria-label', t('nameLbl'));
-  nameInput.setAttribute('aria-describedby', 'hintInlineEdit'); // Fix (Phase 3): link keyboard hint
-  nameInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
-  nameInput.addEventListener('input', function(){ autoCapitalizeFirst(nameInput); setInvalid(nameInput, false); });
-  nameInput.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter' && !ev.isComposing){
-      ev.preventDefault();
-      locInput.focus();
-    } else if (ev.key === 'Escape'){
-      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
-      cancelInlineEdit();
-    }
-  });
-  nameWrap.appendChild(nameInput);
-  row.appendChild(nameWrap);
-
-  var locWrap = document.createElement('div');
-  locWrap.className = 'edit-field';
-  var locInput = document.createElement('input');
-  locInput.type = 'text';
-  locInput.maxLength = 120;
-  locInput.className = 'edit-input edit-loc';
-  locInput.value = it.location;
-  locInput.setAttribute('aria-label', t('locLbl'));
-  locInput.setAttribute('aria-describedby', 'hintInlineEdit'); // Fix (Phase 3): link keyboard hint
-  locInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
-  locInput.addEventListener('input', function(){ autoCapitalizeFirst(locInput); setInvalid(locInput, false); });
-  locInput.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter' && !ev.isComposing){
-      ev.preventDefault();
-      catInput.focus(); // Fix (field order): Location -> Category
-    } else if (ev.key === 'Escape'){
-      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
-      cancelInlineEdit();
-    }
-  });
-  locWrap.appendChild(locInput);
-  row.appendChild(locWrap);
-
-  // Fix (field order): Category is built (and appended) BEFORE Amount so the row reads
-  // Name -> Location -> Category -> Amount. Its value is still read from .value; empty
-  // means "Add new category" (the "-" is display-only).
-  var catWrap = document.createElement('div');
-  catWrap.className = 'edit-field';
-  var catInput = document.createElement('select');
-  catInput.className = 'edit-input edit-category cat-select';
-  catInput.setAttribute('aria-label', t('category'));
-  catInput.setAttribute('aria-describedby', 'hintInlineEdit');
-  catInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
-  fillCategorySelect(catInput, it.category); // empty category => "Add new category"
-  setupCategorySelect(catInput);
-  catInput.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter' && !ev.isComposing){
-      ev.preventDefault();
-      if (catModalIsOpen()) return; // the "new category" modal owns Enter while it is open
-      amountInput.focus(); // Fix (field order): Category -> Amount
-    } else if (ev.key === 'Escape'){
-      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
-      cancelInlineEdit();
-    }
-  });
-  catWrap.appendChild(catInput);
-  row.appendChild(catWrap);
-
-  // Fix (Phase 4): Amount is editable inline along with Name and Location
-  var amountWrap = document.createElement('div');
-  amountWrap.className = 'edit-field edit-field-amount'; // Fix (amount width): narrower track
-  var amountInput = document.createElement('input');
-  amountInput.type = 'number';
-  amountInput.min = '0';
-  amountInput.step = '1';
-  amountInput.className = 'edit-input edit-amount';
-  amountInput.value = it.amount;
-  amountInput.setAttribute('aria-label', t('amount'));
-  amountInput.setAttribute('aria-describedby', 'editAmountError hintInlineEdit');
-  amountInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
-  amountInput.addEventListener('input', function(){ setInvalid(amountInput, false); }); // Fix (a11y audit C1)
-  amountInput.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter' && !ev.isComposing){
-      ev.preventDefault();
-      saveInlineEdit(); // Fix (field order): Amount is now last -> Enter saves the row
-    } else if (ev.key === 'Escape'){
-      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
-      cancelInlineEdit();
-    }
-  });
-  amountWrap.appendChild(amountInput);
-  var amountErr = document.createElement('p');
-  /* Fix (Phase 5 scope note): the reserved-error-area change applies to the ADD form
-     only (spec §2). The inline edit row keeps the Phase 4 display toggling — reserving
-     space here would misalign the edit inputs (centered flex row). */
-  amountErr.className = 'err hidden';
-  amountErr.id = 'editAmountError';
-  amountErr.setAttribute('role', 'alert');
-  amountWrap.appendChild(amountErr);
-  row.appendChild(amountWrap);
-
-  var actions = document.createElement('div');
-  actions.className = 'actions';
-
-  var saveBtn = document.createElement('button');
-  saveBtn.type = 'button';
-  saveBtn.className = 'btn btn-primary btn-sm';
-  saveBtn.textContent = t('save');
-  saveBtn.setAttribute('aria-label', t('save'));
-  saveBtn.addEventListener('click', saveInlineEdit);
-
-  var cancelBtn = document.createElement('button');
-  cancelBtn.type = 'button';
-  cancelBtn.className = 'btn btn-secondary btn-sm';
-  cancelBtn.textContent = t('cancel');
-  cancelBtn.setAttribute('aria-label', t('cancel'));
-  cancelBtn.addEventListener('click', cancelInlineEdit);
-
-  actions.appendChild(saveBtn);
-  actions.appendChild(cancelBtn);
-  row.appendChild(actions);
-  // Inline keyboard hint (small, muted, non-intrusive)
-  var hint = document.createElement('div');
-  hint.className = 'hint-inline';
-  hint.id = 'hintInlineEdit'; // Fix (Phase 3): target for the edit inputs' aria-describedby
-  hint.textContent = t('hintInlineEdit');
-  row.appendChild(hint);
-  return row;
-}
 /* ================= Category dropdown (Fix: category dropdown) ================= */
 /* The Category field is a <select> whose FIRST option is "Add new category" (value '').
    Choosing it opens the "new category" MODAL (Fix: new category modal — it used to be an
@@ -1222,109 +692,6 @@ function setupCategorySelect(sel){
       sel.__catValue = sel.value; // remember the committed value for the modal reset
       setInvalid(sel, false);
     }
-  });
-}
-async function handleFormSubmit(ev){
-  ev.preventDefault();
-  var name = el.inpName.value.trim();
-  var location = el.inpLoc.value.trim();
-  var category = el.inpCategory.value.trim(); // Fix (category): free text, empty allowed
-  if (!name){
-    el.nameError.textContent = t('nameReq'); // Fix (Phase 5): error area always reserved — text only, no display toggling
-    setInvalid(el.inpName, true); // Fix (a11y audit C1): expose the error state to AT
-    el.inpName.focus();
-    return;
-  }
-  el.nameError.textContent = '';
-  setInvalid(el.inpName, false); // Fix (a11y audit C1): cleared
-  var amountRes = parseAmount(el.inpAmount.value);
-  if (!amountRes.ok){
-    el.amountError.textContent = t('amountInvalid'); // Fix (Phase 5): text only — reserved area prevents layout shift
-    setInvalid(el.inpAmount, true); // Fix (a11y audit C1): expose the error state to AT
-    el.inpAmount.focus();
-    return;
-  }
-  el.amountError.textContent = '';
-  setInvalid(el.inpAmount, false); // Fix (a11y audit C1): cleared
-  hideSuggestions();
-  if (state.editingId === null){
-    var nl = name.toLowerCase();
-    var ll = location.toLowerCase();
-    var exact = false, sameName = false;
-    for (var i = 0; i < state.items.length; i++){
-      var it0 = state.items[i];
-      if (it0.name.toLowerCase() === nl){
-        sameName = true;
-        if (it0.location.toLowerCase() === ll){ exact = true; break; }
-      }
-    }
-    if (exact){
-      // Same name AND same location => blocked
-      showAlert({
-        title: t('dupExactTitle'),
-        message: t('dupExactMsg', { name: name, location: location }),
-        danger: true
-      });
-      return;
-    }
-    if (sameName){
-      // Same name, different location => warn but allow
-      var go1 = await askConfirm({
-        title: t('dupWarnTitle'),
-        message: t('dupWarnMsg', { name: name }),
-        okLabel: t('add'),
-        danger: true
-      });
-      if (!go1) return;
-    }
-    if (!location){
-      var go2 = await askConfirm({
-        title: t('locMissingTitle'),
-        message: t('locMissingMsg', { name: name }),
-        okLabel: t('contAnyway'),
-        danger: false
-      });
-      if (!go2){ el.inpLoc.focus(); return; }
-    }
-    var newId = state.nextItemId++;
-    state.items.push({ id: newId, name: name, location: location, amount: amountRes.value, category: category }); // Fix (category): category stored (empty string when blank)
-    persist(); snapshotCurrentData();
-    // Show the page that contains the newly added item
-    var fl = getFilteredItems();
-    for (var k = 0; k < fl.length; k++){
-      if (fl[k].id === newId){ state.page = Math.floor(k / state.pageSize) + 1; break; }
-    }
-    showSaveIndicator();
-    showToast(t('added'), 'success');
-    announce(t('addedNamed', { name: name }));
-  }
-  resetForm();
-  render();
-  el.inpName.focus(); // ready for the next product immediately
-}
-function handleDelete(id){
-  var it = findById(id);
-  if (!it) return;
-  askConfirm({
-    title: t('delTitle'),
-    message: t('delConfirm', { name: it.name }),
-    okLabel: t('del'),
-    danger: true
-  }).then(function(yes){
-    if (!yes) return;
-    // Splice in place: state.items aliases the active depot's array
-    var dep = activeDepot();
-    if (dep){
-      for (var i = 0; i < dep.items.length; i++){
-        if (dep.items[i].id === id){ dep.items.splice(i, 1); break; }
-      }
-    }
-    if (state.editingId === id) resetForm();
-    persist(); snapshotCurrentData();
-    render();
-    showSaveIndicator();
-    showToast(t('deleted'), 'success');
-    announce(t('deleted'));
   });
 }
 
@@ -2114,74 +1481,6 @@ function openShortcuts(){
 function closeShortcuts(){
   el.ksOverlay.classList.add('hidden');
   el.btnShortcuts.focus();
-}
-
-/* Fix (sortable columns): header state — indicator char, aria-label and aria-sort
-   for both sortable headers; the inactive sortable column reports aria-sort "none". */
-function updateSortHeaders(){
-  /* Fix (category): three sortable headers now (Name, Location, Category). Each keeps an
-     indicator char, an aria-label and aria-sort; inactive columns report "none". */
-  var cols = [
-    { key: 'name',     colKey: 'colName',     btn: el.btnSortName, head: el.colNameHead },
-    { key: 'location', colKey: 'colLoc',      btn: el.btnSortLoc,  head: el.colLocHead },
-    { key: 'category', colKey: 'colCategory', btn: el.btnSortCat,  head: el.colCategoryHead }
-  ];
-  cols.forEach(function(c){
-    var ind = '\u2195', sort = 'none';
-    var aria = t('sortAriaUnsorted', { col: t(c.colKey) });
-    if (state.sort.key === c.key){
-      if (state.sort.dir === 'asc'){
-        ind = '\u2191'; sort = 'ascending';
-        aria = t('sortAriaAsc', { col: t(c.colKey) });
-      } else {
-        ind = '\u2193'; sort = 'descending';
-        aria = t('sortAriaDesc', { col: t(c.colKey) });
-      }
-    }
-    c.btn.textContent = t(c.colKey) + ' ' + ind;
-    c.btn.setAttribute('aria-label', aria);
-    c.head.setAttribute('aria-sort', sort);
-  });
-}
-/* Fix (sortable columns): 3-state cycle per header — unsorted -> asc -> desc -> unsorted.
-   Resets pagination to page 1; announces the new state via the polite live region. */
-function cycleSort(key){
-  if (state.sort.key === key){
-    if (state.sort.dir === 'asc'){
-      state.sort.dir = 'desc';
-    } else {
-      state.sort.key = null;
-      state.sort.dir = null;
-    }
-  } else {
-    state.sort.key = key;
-    state.sort.dir = 'asc';
-  }
-  state.page = 1;         // sort change resets pagination
-  state.editingId = null; // the editing row may sit on another page after reordering
-  // Fix (sort clears selection): consistent with search/depot/pagination clears;
-  // no redundant "selection cleared" announcement — the sort announcement below suffices
-  state.selectedIds = {};
-  updateSortHeaders();
-  renderList();
-  if (state.sort.key === null){
-    announce(t('sortAnnCleared'));
-  } else {
-    var colKey = state.sort.key === 'name' ? 'colName'
-               : (state.sort.key === 'location' ? 'colLoc' : 'colCategory');
-    announce(t(state.sort.dir === 'asc' ? 'sortAnnAsc' : 'sortAnnDesc', { col: t(colKey) }));
-  }
-}
-
-/* ================= Batch selection & batch delete ================= */
-/* Selection is page-scoped: only ids visible on the current page stay selected. */
-function visiblePageItems(){
-  var filtered = getFilteredItems();
-  if (filtered.length === 0) return [];
-  var totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
-  var page = Math.min(Math.max(1, state.page), totalPages);
-  var startIdx = (page - 1) * state.pageSize;
-  return filtered.slice(startIdx, startIdx + state.pageSize);
 }
 function countSelection(){
   return Object.keys(state.selectedIds).length;
