@@ -445,420 +445,64 @@
 <script src="js/state.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/announcer.js"></script>
+<script src="js/modals.js"></script>
+<script src="js/store.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/favicon.js"></script>
+<script src="js/input.js"></script>
+<script src="js/validation.js"></script>
 <script>
 (function(){
 'use strict';
 
 /* Aliases to the modules loaded above (read once, at load time). */
-var $ = DC.utils.$;
 var LANGUAGES = DC.i18n.LANGUAGES;
-var LS_DATA = DC.const.LS_DATA;
 var LS_FONT = DC.const.LS_FONT;
 var LS_ICON = DC.const.LS_ICON;
 var LS_LANG = DC.const.LS_LANG;
-var LS_LEGACY = DC.const.LS_LEGACY;
-var LS_THEME = DC.const.LS_THEME;
-var MAX_SNAPS = DC.const.MAX_SNAPS;
 var activeDepot = DC.state.activeDepot;
 var announce = DC.announce.announce;
+var applyFavicon = DC.favicon.applyFavicon;
+var applyTheme = DC.theme.applyTheme;
+var askConfirm = DC.modal.askConfirm;
+var askInput = DC.modal.askInput;
+var autoCapitalizeFirst = DC.input.autoCapitalizeFirst;
+var checkStorage = DC.store.checkStorage;
+var closeConfirm = DC.modal.closeConfirm;
+var currentTheme = DC.theme.currentTheme;
 var detectLang = DC.i18n.detectLang;
 var detectLangFromDevice = DC.i18n.detectLangFromDevice;
 var el = DC.el;
 var findDepot = DC.state.findDepot;
 var getLang = DC.i18n.getLang;
+var handleLocationInput = DC.input.handleLocationInput;
+var handleNameInput = DC.input.handleNameInput;
+var hideSuggestions = DC.input.hideSuggestions;
 var languagesValid = DC.i18n.languagesValid;
+var loadState = DC.store.loadState;
+var parseAmount = DC.validate.parseAmount;
+var persist = DC.store.persist;
+var setInvalid = DC.validate.setInvalid;
 var setLang = DC.i18n.setLang;
+var showAlert = DC.modal.showAlert;
+var showSaveIndicator = DC.store.showSaveIndicator;
+var showToast = DC.modal.showToast;
+var snapshotCurrentData = DC.backup.snapshotCurrentData;
 var state = DC.state;
 var syncItemsRef = DC.state.syncItemsRef;
+var syncThemeToggle = DC.theme.syncThemeToggle;
 var t = DC.i18n.t;
+var toggleTheme = DC.theme.toggleTheme;
 
 /* TEMPORARY migration bridge — removed in the final commit.
    Publishes the functions still defined below that already-extracted
    modules call as DC.<ns>.<fn>() at run time. */
+DC.icons = DC.icons || {};
 DC.list = DC.list || {};
+DC.icons.depotIconOf = depotIconOf;
 DC.list.render = render;
 
-var storageOk = true;
-
-/* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
-
-/* ================= Store (localStorage) ================= */
-function persist(){
-  if (!storageOk) return true; // in-memory only
-  var payload = JSON.stringify({
-    version: 2,
-    nextDepotId: state.nextDepotId,
-    nextItemId: state.nextItemId,
-    activeDepotId: state.activeDepotId,
-    depots: state.depots,
-    depotIcons: state.depotIcons // Fix (depot icon picker): separate id -> emoji map
-  });
-  try {
-    localStorage.setItem(LS_DATA, payload);
-    try { localStorage.removeItem(LS_LEGACY); } catch(e2){} // migrated away
-    return true;
-  } catch(e){
-    // Quota likely exceeded: evict old snapshots and retry once
-    if (evictOldestSnapshot()){
-      try { localStorage.setItem(LS_DATA, payload); return true; } catch(e2){}
-    }
-    showToast(t('storageWarn'), 'warn');
-    announce(t('storageWarn'), true);
-    return false;
-  }
-}
-/* Load multi-depot state; migrates the legacy flat structure once. */
-function loadState(){
-  // 1) current multi-depot format
-  try {
-    var raw = localStorage.getItem(LS_DATA);
-    if (raw){
-      var d = JSON.parse(raw);
-      if (d && d.version === 2 && Array.isArray(d.depots)){
-        var depots = [], maxDepot = 0, maxItem = 0;
-        for (var i = 0; i < d.depots.length; i++){
-          var dp = d.depots[i];
-          if (!dp || typeof dp.name !== 'string') continue;
-          var items = [];
-          if (Array.isArray(dp.items)){
-            for (var j = 0; j < dp.items.length; j++){
-              var it = dp.items[j];
-              if (!it || typeof it.name !== 'string') continue;
-              var rec = {
-                id: (typeof it.id === 'number' && isFinite(it.id)) ? it.id : null,
-                name: String(it.name).slice(0, 200),
-                location: (typeof it.location === 'string') ? String(it.location).slice(0, 200) : '',
-                /* Fix (Phase 4): migrate missing/invalid amount to 1 — silent, no
-                   announcements (loadState runs before any UI). Format stays v2:
-                   amount is an additive, optional field. */
-                amount: (typeof it.amount === 'number' && isFinite(it.amount) && it.amount >= 0 && it.amount % 1 === 0) ? it.amount : 1,
-                /* Fix (category): migrate missing/invalid category to '' — silent,
-                   additive optional field (same pattern as amount) */
-                category: (typeof it.category === 'string') ? String(it.category).slice(0, 200) : ''
-              };
-              if (rec.id !== null && rec.id > maxItem) maxItem = rec.id;
-              items.push(rec);
-            }
-          }
-          var depId = (typeof dp.id === 'number' && isFinite(dp.id)) ? dp.id : null;
-          if (depId !== null && depId > maxDepot) maxDepot = depId;
-          depots.push({ id: depId, name: String(dp.name).slice(0, 60), items: items });
-        }
-        var nextItemId = (typeof d.nextItemId === 'number' && d.nextItemId > maxItem) ? d.nextItemId : maxItem + 1;
-        depots.forEach(function(dp2){
-          if (dp2.id === null) dp2.id = nextItemId++; // degenerate but harmless
-          dp2.items.forEach(function(r){ if (r.id === null) r.id = nextItemId++; });
-        });
-        var active = (typeof d.activeDepotId === 'number' && findDepotIn(depots, d.activeDepotId))
-          ? d.activeDepotId : (depots.length ? depots[0].id : null);
-        /* Fix (depot icon picker): sanitize the icon map; missing/invalid entries are
-           dropped (old data without the map simply yields {}) */
-        var icons = {};
-        if (d.depotIcons && typeof d.depotIcons === 'object'){
-          Object.keys(d.depotIcons).forEach(function(k){
-            var v = d.depotIcons[k];
-            var idn = parseInt(k, 10);
-            if (isFinite(idn) && typeof v === 'string' && v.length > 0 && v.length <= 8) icons[idn] = v;
-          });
-        }
-        return {
-          ok: true,
-          data: {
-            depots: depots,
-            activeDepotId: active,
-            nextDepotId: (typeof d.nextDepotId === 'number' && d.nextDepotId > maxDepot) ? d.nextDepotId : maxDepot + 1,
-            nextItemId: nextItemId,
-            depotIcons: icons
-          }
-        };
-      }
-    }
-  } catch(e){ /* fall through to legacy */ }
-  // 2) legacy flat structure -> migrate into a single default depot
-  try {
-    var legacy = localStorage.getItem(LS_LEGACY);
-    if (legacy){
-      var old = JSON.parse(legacy);
-      if (old && Array.isArray(old.items)){
-        var items = [], maxId = 0;
-        for (var k = 0; k < old.items.length; k++){
-          var oit = old.items[k];
-          if (!oit || typeof oit.name !== 'string') continue;
-          var orec = {
-            id: (typeof oit.id === 'number' && isFinite(oit.id)) ? oit.id : null,
-            name: String(oit.name).slice(0, 200),
-            location: (typeof oit.location === 'string') ? String(oit.location).slice(0, 200) : '',
-            amount: 1, // Fix (Phase 4): legacy items had no amount — default silently
-            category: '' // Fix (category): legacy items had no category — default silently
-          };
-          if (orec.id !== null && orec.id > maxId) maxId = orec.id;
-          items.push(orec);
-        }
-        var nextItemId = (typeof old.nextId === 'number' && old.nextId > maxId) ? old.nextId : maxId + 1;
-        items.forEach(function(r){ if (r.id === null) r.id = nextItemId++; });
-        var depotName = t('defaultDepotName');
-        return {
-          ok: true,
-          migrated: true,
-          data: {
-            depots: [{ id: 1, name: depotName, items: items }],
-            activeDepotId: 1,
-            nextDepotId: 2,
-            nextItemId: nextItemId,
-            depotIcons: {} // Fix (depot icon picker): legacy data has no icons
-          }
-        };
-      }
-    }
-  } catch(e){ /* fall through to fresh */ }
-  return { ok: true, empty: true };
-}
-function findDepotIn(depots, id){
-  for (var i = 0; i < depots.length; i++){
-    if (depots[i].id === id) return true;
-  }
-  return false;
-}
-function checkStorage(){
-  try {
-    var k = '__dc_test__';
-    localStorage.setItem(k, '1');
-    localStorage.removeItem(k);
-    storageOk = true;
-  } catch(e){
-    storageOk = false;
-  }
-}
-
-/* ================= Snapshots (rolling window of 5) ================= */
-/* Snapshots are kept in ONE localStorage key as an array, newest first.
-   This avoids key collisions when several mutations happen in the same
-   millisecond and makes pruning trivial. */
-var LS_SNAPS = 'depotCatalog.snaps.v1';
-function readSnaps(){
-  try {
-    var arr = JSON.parse(localStorage.getItem(LS_SNAPS));
-    if (!Array.isArray(arr)) return [];
-    /* Fix (category): migrate snapshots on read so an old snapshot (items without a
-       `category` field) is upgraded to category:"" before any consumer sees it.
-       Silent — no announcements, no writes here. */
-    normalizeSnapshots(arr);
-    return arr;
-  } catch(e){ return []; }
-}
-/* Fix (category): in-place, defensive normalization of a snapshot array. Anything that
-   is not a string (missing key, null, number) becomes '' — the same rule loadState uses. */
-function normalizeSnapshots(snaps){
-  for (var s = 0; s < snaps.length; s++){
-    var entry = snaps[s];
-    var dps = (entry && entry.data && Array.isArray(entry.data.depots)) ? entry.data.depots : null;
-    if (!dps) continue;
-    for (var d = 0; d < dps.length; d++){
-      var items = (dps[d] && Array.isArray(dps[d].items)) ? dps[d].items : null;
-      if (!items) continue;
-      for (var i = 0; i < items.length; i++){
-        if (items[i] && typeof items[i].category !== 'string') items[i].category = '';
-      }
-    }
-  }
-  return snaps;
-}
-function writeSnaps(snaps){
-  try {
-    localStorage.setItem(LS_SNAPS, JSON.stringify(snaps));
-    return true;
-  } catch(e){ return false; }
-}
-function snapshotCurrentData(){
-  if (!storageOk) return;
-  var entry = {
-    ts: Date.now(),
-    data: {
-      version: 2,
-      nextDepotId: state.nextDepotId,
-      nextItemId: state.nextItemId,
-      activeDepotId: state.activeDepotId,
-      depots: state.depots,
-      depotIcons: state.depotIcons // Fix (depot icon picker): snapshots carry the icon map too
-    }
-  };
-  var snaps = readSnaps();
-  snaps.unshift(entry);
-  while (snaps.length > MAX_SNAPS) snaps.pop(); // rolling window: keep newest 5
-  if (!writeSnaps(snaps)){
-    // Quota likely exceeded: drop oldest snapshots and retry
-    while (snaps.length > 1){
-      snaps.pop();
-      if (writeSnaps(snaps)) return;
-    }
-    showToast(t('storageWarn'), 'warn');
-    announce(t('storageWarn'), true);
-  }
-}
-function evictOldestSnapshot(){
-  var snaps = readSnaps();
-  if (snaps.length === 0) return false;
-  snaps.pop();
-  return writeSnaps(snaps);
-}
-
-/* ================= Toast & modal ================= */
-var toastTimer = null;
-var toastTypes = ['toast-success','toast-warn','toast-error','toast-info'];
-function showToast(msg, type){
-  el.toast.textContent = msg;
-  toastTypes.forEach(function(tn){ el.toast.classList.remove(tn); });
-  el.toast.classList.add('toast-' + (type || 'info'));
-  el.toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ el.toast.classList.remove('show'); }, 3000);
-}
-var confirmResolve = null;
-var lastFocused = null;
-var modalInputMode = false;
-function askConfirm(opts){
-  return openModal({
-    title: opts.title,
-    message: opts.message,
-    list: opts.list,
-    okLabel: opts.okLabel,
-    danger: opts.danger,
-    alertOnly: opts.alertOnly
-  }).then(function(v){ return v === true; });
-}
-/* Input modal: resolves the trimmed input value on Save, null on cancel. */
-function askInput(opts){
-  return openModal({
-    title: opts.title,
-    message: opts.message,
-    inputValue: opts.value || '',
-    okLabel: opts.okLabel || t('save'),
-    danger: opts.danger
-  }).then(function(v){
-    if (v === true) return el.modalInput.value.trim();
-    return null;
-  });
-}
-function openModal(opts){
-  lastFocused = document.activeElement;
-  modalInputMode = (typeof opts.inputValue === 'string');
-  el.modalTitle.textContent = opts.title;
-  if (opts.message !== undefined){
-    el.modalText.textContent = opts.message;
-    el.modalText.classList.remove('hidden');
-  } else {
-    el.modalText.classList.add('hidden');
-  }
-  if (modalInputMode){
-    el.modalInput.value = opts.inputValue;
-    el.modalInput.classList.remove('hidden');
-    el.modalInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1): fresh dialog
-    // Fix: give the depot-name input an accessible name (audit #2)
-    el.modalInput.setAttribute('aria-label', t('depotNameLbl'));
-  } else {
-    el.modalInput.value = '';
-    el.modalInput.classList.add('hidden');
-  }
-  el.modalList.innerHTML = '';
-  if (opts.list && opts.list.length){
-    opts.list.forEach(function(line){
-      var li = document.createElement('li');
-      li.textContent = line; // textContent => XSS-safe
-      el.modalList.appendChild(li);
-    });
-    el.modalList.classList.remove('hidden');
-  } else {
-    el.modalList.classList.add('hidden');
-  }
-  el.modalOk.textContent = opts.okLabel;
-  el.modalCancel.textContent = t('cancel');
-  el.modalCancel.classList.toggle('hidden', !!opts.alertOnly);
-  el.modalOk.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-primary');
-  el.overlay.classList.remove('hidden');
-  if (modalInputMode){
-    el.modalInput.focus();
-    try { el.modalInput.select(); } catch(e){}
-  } else {
-    el.modalOk.focus();
-  }
-  return new Promise(function(resolve){ confirmResolve = resolve; });
-}
-function closeConfirm(value){
-  el.overlay.classList.add('hidden');
-  el.modalInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1): closing clears the error state
-  modalInputMode = false;
-  if (lastFocused && lastFocused.focus){ try { lastFocused.focus(); } catch(e){} }
-  lastFocused = null;
-  if (confirmResolve){ confirmResolve(value); confirmResolve = null; }
-}
-function showAlert(opts){
-  return askConfirm({
-    title: opts.title,
-    message: opts.message,
-    okLabel: opts.okLabel || t('ok'),
-    danger: !!opts.danger,
-    alertOnly: true
-  }).then(function(){ return true; });
-}
-
-/* ================= Input enhancements ================= */
-var composing = false;
-function autoCapitalizeFirst(inp){
-  if (composing) return;
-  var v = inp.value;
-  if (!v) return;
-  var c = v.charAt(0);
-  var u = c.toUpperCase();
-  if (c !== u && c.toLowerCase() === c){ // only remap letters, leave symbols/digits
-    inp.value = u + v.slice(1);
-  }
-}
-function handleNameInput(){
-  autoCapitalizeFirst(el.inpName);
-  setInvalid(el.inpName, false); // Fix (a11y audit C1): typing clears the error state
-  renderSuggestions();
-}
-function handleLocationInput(){
-  // Only auto-uppercase the first letter; no dash is inserted automatically.
-  // Pastes and manual edits are left untouched (autoCapitalizeFirst only
-  // changes the case of an existing leading letter).
-  autoCapitalizeFirst(el.inpLoc);
-}
-function hideSuggestions(){
-  el.nameSuggest.classList.add('hidden');
-  el.nameSuggest.innerHTML = '';
-}
-function renderSuggestions(){
-  hideSuggestions();
-  if (state.editingId !== null) return;      // only in Add mode
-  if (composing) return;
-  var q = el.inpName.value.trim().toLowerCase();
-  if (!q) return;
-  var matches = [];
-  for (var i = 0; i < state.items.length && matches.length < 8; i++){
-    if (state.items[i].name.toLowerCase().indexOf(q) !== -1){
-      matches.push(state.items[i]);
-    }
-  }
-  if (matches.length === 0) return;
-  matches.forEach(function(it){
-    var d = document.createElement('div');
-    d.className = 'suggest-item';
-    d.setAttribute('role', 'option');
-    var n = document.createElement('span');
-    n.className = 'sg-name';
-    n.textContent = it.name;               // textContent => XSS-safe
-    d.appendChild(n);
-    if (it.location){
-      var l = document.createElement('span');
-      l.className = 'sg-loc';
-      l.textContent = it.location;
-      d.appendChild(l);
-    }
-    el.nameSuggest.appendChild(d);
-  });
-  el.nameSuggest.classList.remove('hidden');
-}
 
 /* ================= Rendering ================= */
 function applyStaticText(){
@@ -992,14 +636,6 @@ function makeCheckCell(it, disabled){
   cb.addEventListener('change', function(){ toggleSelect(it.id); });
   wrap.appendChild(cb);
   return wrap;
-}
-/* Fix (Phase 4): shared Amount validation — empty => 1; otherwise digits-only
-   non-negative integer. Used by the Add form, inline edit, and CSV import. */
-function parseAmount(raw){
-  var s = String(raw == null ? '' : raw).trim();
-  if (s === '') return { ok: true, value: 1 };
-  if (!/^[0-9]+$/.test(s)) return { ok: false, value: 1 };
-  return { ok: true, value: parseInt(s, 10) };
 }
 function renderList(){
   var body = el.listBody;
@@ -1421,13 +1057,6 @@ function buildEditRow(it){
   hint.textContent = t('hintInlineEdit');
   row.appendChild(hint);
   return row;
-}
-/* Fix (a11y audit C1): mirror a field's error state for assistive tech.
-   aria-invalid reflects whether the field currently holds an error; the visible
-   error text and red-border behaviour are unchanged. */
-function setInvalid(input, on){
-  if (!input) return;
-  input.setAttribute('aria-invalid', on ? 'true' : 'false');
 }
 /* ================= Category dropdown (Fix: category dropdown) ================= */
 /* The Category field is a <select> whose FIRST option is "Add new category" (value '').
@@ -1947,29 +1576,6 @@ function showImportReport(validCount, dup, missing, amountDefaulted, noLocation)
   }
   el.importReport.classList.remove('hidden');
 }
-
-/* ================= Theme (dark/light) ================= */
-function currentTheme(){
-  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-}
-function syncThemeToggle(){
-  if (!el.btnTheme) return;
-  var dark = currentTheme() === 'dark';
-  el.btnTheme.setAttribute('aria-checked', String(dark));
-  var label = t('themeToggleLabel');
-  el.btnTheme.setAttribute('aria-label', label);
-  el.btnTheme.title = label;
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme', theme);
-  syncThemeToggle();
-}
-function toggleTheme(){
-  var next = currentTheme() === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  try { localStorage.setItem(LS_THEME, next); } catch(e){}
-  announce(t(next === 'dark' ? 'themeDarkOn' : 'themeLightOn'));
-}
 /* ================= Settings (Fix: settings gear) ================= */
 var SCALE_VALUES = { small: 0.9, normal: 1, large: 1.15, xl: 1.3 };
 var SIZE_KEYS = { small: 'sizeSmall', normal: 'sizeNormal', large: 'sizeLarge', xl: 'sizeExtraLarge' };
@@ -2085,26 +1691,6 @@ function onResetSettings(){
     if (!el.settingsOverlay.classList.contains('hidden')) applySettingsText();
     announce(t('settingsResetAnnouncement'));
   });
-}
-
-
-/* ================= Save indicator ================= */
-var savePhase1Timer = null;
-var savePhase2Timer = null;
-function showSaveIndicator(){
-  if (!storageOk) return;
-  clearTimeout(savePhase1Timer);
-  clearTimeout(savePhase2Timer);
-  el.saveIndicator.classList.add('show');
-  el.saveIndText.textContent = t('saving');
-  announce(t('saving'));
-  savePhase1Timer = setTimeout(function(){
-    el.saveIndText.textContent = t('saved');
-    announce(t('saved'));
-    savePhase2Timer = setTimeout(function(){
-      el.saveIndicator.classList.remove('show');
-    }, 3000);
-  }, 700);
 }
 
 /* ================= Depot selector & depot CRUD ================= */
@@ -2320,18 +1906,6 @@ function syncDepotIconUI(){
     var iconLbl = t('iconButtonLabel');
     el.btnDepotIcon.setAttribute('aria-label', iconLbl);
     el.btnDepotIcon.title = iconLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
-  }
-}
-/* Fix (favicon on load): generation lives in the shared HEAD helper
-   (window.dcSetEmojiFavicon, defined right after the favicon link); this wrapper only
-   tracks the last successfully drawn emoji so unchanged updates are skipped (§3).
-   On helper failure the static icon.png stays and the next trigger retries. */
-var lastFaviconEmoji = (typeof window.__dcFaviconEmoji === 'string') ? window.__dcFaviconEmoji : null;
-function applyFavicon(){
-  var emoji = depotIconOf(state.activeDepotId);
-  if (emoji === lastFaviconEmoji) return; // skip: unchanged since the last successful draw
-  if (typeof window.dcSetEmojiFavicon === 'function' && window.dcSetEmojiFavicon(emoji)){
-    lastFaviconEmoji = emoji; // helper replaced the link and set window.__dcFaviconEmoji
   }
 }
 function renderIconGrid(){
@@ -3157,8 +2731,8 @@ function bindEvents(){
       el.btnSubmit.click(); // Amount is last -> Enter submits the form
     }
   });
-  document.addEventListener('compositionstart', function(){ composing = true; });
-  document.addEventListener('compositionend', function(){ composing = false; });
+  document.addEventListener('compositionstart', function(){ DC.input.composing = true; });
+  document.addEventListener('compositionend', function(){ DC.input.composing = false; });
   el.inpSearch.addEventListener('input', function(){
     state.filter = el.inpSearch.value;
     state.page = 1;         // filter changed => back to first page
@@ -3439,7 +3013,7 @@ function init(){
   applyFontScale(state.fontScale);
   applyIconScale(state.iconScale);
   var loaded = { ok: true, empty: true };
-  if (storageOk){
+  if (DC.store.ok){
     loaded = loadState();
   } else {
     el.banner.textContent = t('storageWarn');
