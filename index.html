@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Depo Katalog / Depot Catalog - offline single-file app">
 <title>Depot Catalog</title>
-<link rel="icon" type="image/png" href="icon.png">
+<link rel="icon" type="image/png" href="assets/icon.png">
 <!-- Fix (favicon on load): build the active depot's emoji favicon BEFORE first paint,
      so refresh/first load shows it too. dcSetEmojiFavicon is the shared helper the main
      app reuses; everything is try/catch'd so any failure silently leaves icon.png. -->
@@ -55,7 +55,7 @@
   } catch(e){ /* static icon.png stays */ }
 })();
 </script>
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
 <script>
 /* Apply the saved (or system) theme before first paint to avoid a flash */
 (function(){
