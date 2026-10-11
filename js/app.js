@@ -461,7 +461,5 @@ function init(){
   try { el.inpSearch.focus(); } catch(e){} // start typing a search right away
 }
 init();
-
-/* Exports. */
 })();
 

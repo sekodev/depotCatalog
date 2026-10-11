@@ -112,6 +112,20 @@ function savePendingIcon(){
   }
   closeIconPicker();
 }
+/* Fix (CSV icon metadata): programmatic setter used by the CSV importer. Writes the map,
+   refreshes the header icon and the favicon, and stays deliberately silent — the importer
+   reports through the post-import notice and its own save indicator. 📦 removes the entry,
+   exactly like the picker, so the map only ever holds CUSTOM icons. */
+function setDepotIcon(depotId, emoji){
+  if (depotId == null || !emoji) return;
+  if (emoji === DEFAULT_DEPOT_ICON){
+    delete state.depotIcons[depotId];
+  } else {
+    state.depotIcons[depotId] = emoji;
+  }
+  syncDepotIconUI();
+  applyFavicon();
+}
 function openIconPicker(){
   el.iconPickerTitle.textContent = t('iconPickerTitle');
   el.iconPickerSave.textContent = t('iconPickerSave');
@@ -177,6 +191,7 @@ DC.icons.depotIconOf = depotIconOf;
 DC.icons.iconPickerKeydown = iconPickerKeydown;
 DC.icons.openIconPicker = openIconPicker;
 DC.icons.savePendingIcon = savePendingIcon;
+DC.icons.setDepotIcon = setDepotIcon;
 DC.icons.syncDepotIconUI = syncDepotIconUI;
 })();
 

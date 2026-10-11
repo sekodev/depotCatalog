@@ -43,7 +43,13 @@ function handleExport(){
     okLabel: t('download')
   }).then(function(yes){
     if (!yes) return;
-    var lines = ['Name,Location,Category,Amount']; // Fix (field order): Category precedes Amount
+    /* Fix (CSV icon metadata): transport the active depot's CUSTOM icon only — a depot
+       without an entry uses the 📦 fallback, which is not written. Read through DC.icons
+       at call time (icon-picker.js loads after this file). */
+    var customIcon = (state.depotIcons && state.depotIcons[dep.id]) ? DC.icons.depotIconOf(dep.id) : '';
+    var lines = [];
+    if (customIcon) lines.push('# depotIcon:' + customIcon);
+    lines.push('Name,Location,Category,Amount'); // Fix (field order): Category precedes Amount
     for (var i = 0; i < dep.items.length; i++){
       lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location) + ',' + csvEscape(dep.items[i].category) + ',' + String(dep.items[i].amount));
     }
@@ -97,6 +103,15 @@ function parseCsvRows(text){
 function analyzeCsvImport(text){
   var rows = parseCsvRows(text);
   if (rows.length === 0) return { error: true };
+  /* Fix (CSV icon metadata): an optional '# depotIcon:<emoji>' line may precede the header.
+     It is transport-only — consumed here so it never becomes a data row or the header. */
+  var depotIcon = null;
+  if (rows[0].length && /^#\s*depotIcon:/i.test(String(rows[0][0]))){
+    var rawIcon = String(rows[0][0]).replace(/^#\s*depotIcon:/i, '').trim();
+    if (rawIcon) depotIcon = rawIcon;
+    rows = rows.slice(1);
+    if (rows.length === 0) return { error: true };
+  }
   /* Fix (field order): the header must be exactly Name,Location,Category,Amount — matched by
      name, case-insensitively and trimmed, IN THAT ORDER. The old order (…,Amount,Category) is
      rejected. A trailing empty column (a stray final comma) is tolerated. */
@@ -155,7 +170,7 @@ function analyzeCsvImport(text){
     if (amDefaulted) amountDefaulted++;
     if (!location) noLocation++; // Fix (Phase 5): count imported rows with no location
   }
-  return { valid: valid, dup: dup, missing: missing, amountDefaulted: amountDefaulted, noLocation: noLocation };
+  return { valid: valid, dup: dup, missing: missing, amountDefaulted: amountDefaulted, noLocation: noLocation, depotIcon: depotIcon };
 }
 function skippedLine(item, reasonKey, emoji){
   var icon = emoji ? emoji + ' ' : '';
@@ -204,6 +219,11 @@ function handleImportFile(file){
         state.items.push({ id: id, name: v.name, location: v.location, amount: v.amount, category: v.category }); // Fix (category): category imported
       });
       state.editingId = null;
+      /* Fix (CSV icon metadata): apply a transported depot icon, overwriting the existing
+         one. setDepotIcon is silent (no toast/announce/save indicator) — the post-import
+         notice reports it and persist() below makes it durable. */
+      var iconApplied = result.depotIcon ? result.depotIcon : null;
+      if (iconApplied) DC.icons.setDepotIcon(state.activeDepotId, iconApplied);
       persist(); snapshotCurrentData();
       // Show the page that contains the first newly added item
       if (firstNewId !== null){
@@ -214,10 +234,10 @@ function handleImportFile(file){
       }
       hideImportReport();
       render();
-      if (skippedCount > 0 || result.amountDefaulted > 0 || result.noLocation > 0){ // Fix (Phase 5): notice also for no-location rows
+      if (skippedCount > 0 || result.amountDefaulted > 0 || result.noLocation > 0 || iconApplied){ // Fix (Phase 5) + Fix (CSV icon metadata): notice also when an icon was applied
         // Fix (Phase 4): show the notice when rows were skipped OR when Amount was
         // defaulted (e.g., missing Amount column) — spec requires feedback in both cases
-        showImportReport(result.valid.length, result.dup, result.missing, result.amountDefaulted, result.noLocation); // Fix (Phase 5): pass no-location count
+        showImportReport(result.valid.length, result.dup, result.missing, result.amountDefaulted, result.noLocation, iconApplied); // Fix (Phase 5): pass no-location count
         showSaveIndicator(); // Fix: data is persisted even when rows were skipped (audit #8)
         // Fix (Phase 4): SR users get the same defaulted-rows feedback as visual users
         announce(t('impComplete', { n: result.valid.length, d: result.dup.length }) +
@@ -234,7 +254,7 @@ function handleImportFile(file){
 function hideImportReport(){
   el.importReport.classList.add('hidden');
 }
-function showImportReport(validCount, dup, missing, amountDefaulted, noLocation){
+function showImportReport(validCount, dup, missing, amountDefaulted, noLocation, iconApplied){
   el.impReportTitle.textContent = t('impReportTitle');
   el.impReportSummary.textContent = t('imported', { n: validCount });
   el.impReportList.innerHTML = '';
@@ -243,6 +263,11 @@ function showImportReport(validCount, dup, missing, amountDefaulted, noLocation)
     if (cls) li.className = cls;
     li.textContent = text; // textContent => XSS-safe
     el.impReportList.appendChild(li);
+  }
+  /* Fix (CSV icon metadata): a transported icon is reported first (emoji is allowed
+     outside modals), so the user sees that the depot icon changed. */
+  if (iconApplied){
+    addItem('report-header', '\uD83C\uDFA8 ' + t('importIconUpdated', { emoji: iconApplied }));
   }
   // Grouped sections with clear headers and spacing between them
   if (dup.length){
