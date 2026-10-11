@@ -1,13 +1,18 @@
 # Depo Katalog / Depot Catalog
 
-A dependency-free static web app (`index.html` + `translations.js`) for cataloging products. All data stays in your browser — nothing is sent to any server, and it works fully offline.
+A dependency-free static web app (plain HTML/CSS/JS, **no build step**) for cataloging products. All data stays in your browser — nothing is sent to any server, and it works fully offline.
 
 ## Files
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `index.html` | All HTML structure, CSS and application logic |
+| `index.html` | Page structure: head, markup, the three pre-paint scripts (favicon / theme / scales) and the bootstrap guard |
+| `css/` | 12 stylesheets, linked in the original source order: `base`, `layout`, `list`, `toolbar`, `modals`, `forms`, `footer`, `depot`, `shortcuts`, `a11y`, `pagination`, `responsive` |
+| `js/` | 28 classic scripts sharing one `DC` namespace: `namespace`, `constants`, `utils`, `state`, `i18n`, `announcer`, `modals`, `store`, `backup`, `theme`, `favicon`, `input`, `validation`, `search`, `pagination`, `list`, `sort`, `items`, `inline-edit`, `category`, `csv`, `settings`, `depot`, `icon-picker`, `shortcuts`, `batch`, `bulk`, `app` |
 | `translations.js` | **All user-facing texts** (Turkish + English). Editable by non-technical users — see below |
+| `assets/icon.png` | Fallback app icon (the dynamic emoji favicon replaces it when a depot icon is set) |
+
+The scripts are plain `<script src>` files (no ES modules, no bundler) so the app keeps working both from `file://` and from GitHub Pages. `js/namespace.js` creates `window.DC` and the `DC.expected` manifest that the bootstrap guard checks.
 
 ## Features
 
@@ -15,7 +20,7 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 - **Live search**: filters by name, location or category, case-insensitive; search box is focused on page load
 - **Pagination**: selectable page size (5/10/15/20, default 5), numbered pages with previous/next; current page highlighted
 - **Sorting**: click the "Product", "Location" or "Category" column headers to cycle ascending → descending → insertion order; indicators (↑/↓/↕) show the state; sort resets when switching depots and persists across searches
-- **Depot icons**: the icon left of the depot name opens a picker with 20 preset emoji (4×5 grid); clicking a tile marks it as the **pending** choice (applied icon keeps a subtle outline) and **Save** commits it — **Cancel/Escape** discard the change; the choice is stored per depot in a separate `depotIcons` map, drives the dynamic favicon (canvas → data URL, `icon.png` kept as fallback), and 📦 removes the entry so the fallback applies
+- **Depot icons**: the icon left of the depot name opens a picker with 20 preset emoji (4×5 grid); clicking a tile marks it as the **pending** choice (applied icon keeps a subtle outline) and **Save** commits it — **Cancel/Escape** discard the change; the choice is stored per depot in a separate `depotIcons` map, drives the dynamic favicon (canvas → data URL, `assets/icon.png` kept as fallback), and 📦 removes the entry so the fallback applies
 - **Batch selection**: row checkboxes plus a "select all" header checkbox (current page only); icon buttons "🗑️ (N)" (remove confirmation modal) and "✏️ (N)" (bulk edit) appear while rows are checked — their accessible name and hover tooltip read "Remove selected items (N)" / "Edit selected items (N)" (Turkish: "Seçilen kayıtları kaldır (N)" / "Seçilen kayıtları düzenle (N)"); the selection is cleared on search, depot switch and page change
 - **Bulk edit**: "Edit selected (N)" opens a three-step dialog — 1) choose fields to change (Name / Location / Amount / Category; unchecked fields stay untouched), 2) a preview listing every affected item plus any **merge groups** (items that would end up with the same name + location, case-insensitive and trimmed, are combined — lowest id kept, amounts summed, always shown *before* applying), 3) a final report with the update/merge counts; empty Location or Category is allowed with a warning (an empty Category **clears** it), empty Amount defaults to 1, and the batch selection is cleared after applying
 - **Duplicate protection**: while typing a product name in Add mode, matching products are listed under the input; exact duplicates (same name + location) are blocked with an alert; same name at a different location asks for confirmation
@@ -33,9 +38,14 @@ A dependency-free static web app (`index.html` + `translations.js`) for catalogi
 
 No build step, no server required:
 
-1. Keep `index.html` and `translations.js` in the same folder.
+1. Keep the whole folder together (`index.html`, `translations.js`, `css/`, `js/`, `assets/`).
 2. Double-click `index.html` — it opens in any modern browser.
 3. Optional: serve locally with `python -m http.server 8000` or VS Code Live Server.
+
+If a file is missing or failed to load (for example only `index.html` was copied), the app shows
+`Application scripts failed to load. Please refresh or re-download the app.`
+(Turkish: `Uygulama betikleri yüklenemedi. Lütfen yenileyin veya uygulamayı yeniden indirin.`)
+instead of appearing silently broken.
 
 ## Editing / Adding Languages (translations.js)
 
@@ -64,7 +74,7 @@ Open `translations.js` in any text editor. Each language is one block:
 
 ```bash
 git init
-git add index.html translations.js README.md .nojekyll
+git add index.html translations.js README.md .nojekyll css js assets
 git commit -m "Initial stock catalog"
 git remote add origin https://github.com/<user>/depotCatalog.git
 git push -u origin main
