@@ -440,148 +440,45 @@
 
 <script src="translations.js"></script>
 <script src="js/namespace.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/state.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/announcer.js"></script>
 <script>
 (function(){
 'use strict';
 
-/* ================= Constants ================= */
-var LS_DATA    = 'depotCatalog.data.v2';   // multi-depot storage (current)
-var LS_LEGACY  = 'depotCatalog.items.v1';  // pre-multi-depot storage (migrated once)
-var LS_LANG    = 'depotCatalog.lang';
-var LS_THEME   = 'depotCatalog.theme';
-/* Fix (settings): font/icon scale preference keys */
-var LS_FONT    = 'depotCatalog.fontScale';
-var LS_ICON    = 'depotCatalog.iconScale';
-var MAX_SNAPS = 5;
+/* Aliases to the modules loaded above (read once, at load time). */
+var $ = DC.utils.$;
+var LANGUAGES = DC.i18n.LANGUAGES;
+var LS_DATA = DC.const.LS_DATA;
+var LS_FONT = DC.const.LS_FONT;
+var LS_ICON = DC.const.LS_ICON;
+var LS_LANG = DC.const.LS_LANG;
+var LS_LEGACY = DC.const.LS_LEGACY;
+var LS_THEME = DC.const.LS_THEME;
+var MAX_SNAPS = DC.const.MAX_SNAPS;
+var activeDepot = DC.state.activeDepot;
+var announce = DC.announce.announce;
+var detectLang = DC.i18n.detectLang;
+var detectLangFromDevice = DC.i18n.detectLangFromDevice;
+var el = DC.el;
+var findDepot = DC.state.findDepot;
+var getLang = DC.i18n.getLang;
+var languagesValid = DC.i18n.languagesValid;
+var setLang = DC.i18n.setLang;
+var state = DC.state;
+var syncItemsRef = DC.state.syncItemsRef;
+var t = DC.i18n.t;
 
-/* ============ i18n (strings live in external translations.js) ============ */
-var LANGUAGES = window.DEPOT_LANGUAGES;
-/* Bootstrap guard: appName is the sentinel key EVERY language must define. It doubles as
-   the visible app name (dynamic page title), so a broken or missing translations.js is
-   detected without needing a dedicated key. */
-function languagesValid(arr){
-  if (!Array.isArray(arr) || arr.length === 0) return false;
-  for (var i = 0; i < arr.length; i++){
-    var L = arr[i];
-    if (!L || typeof L.code !== 'string' || typeof L.label !== 'string' ||
-        !L.strings || typeof L.strings !== 'object' ||
-        typeof L.strings.appName !== 'string') return false;
-  }
-  return true;
-}
-function getLang(code){
-  for (var i = 0; i < LANGUAGES.length; i++){
-    if (LANGUAGES[i].code === code) return LANGUAGES[i];
-  }
-  return null;
-}
-/* Fix (settings): device detection factored out so "reset to defaults" can re-detect
-   the language while ignoring the saved preference (existing fallback preserved). */
-function detectLangFromDevice(){
-  var langs = (navigator.languages && navigator.languages.length)
-    ? navigator.languages : [navigator.language || ''];
-  for (var i = 0; i < langs.length; i++){
-    var p = String(langs[i] || '').toLowerCase();
-    for (var j = 0; j < LANGUAGES.length; j++){
-      var c = LANGUAGES[j].code.toLowerCase();
-      if (p === c || p.indexOf(c + '-') === 0) return LANGUAGES[j].code;
-    }
-  }
-  return getLang('en') ? 'en' : LANGUAGES[0].code; // fallback
-}
-function detectLang(){
-  var saved = null;
-  try { saved = localStorage.getItem(LS_LANG); } catch(e){}
-  if (saved && getLang(saved)) return saved;
-  return detectLangFromDevice();
-}
-function t(key, params){
-  var cur = getLang(state.lang);
-  var s = (cur && cur.strings && cur.strings[key] != null) ? cur.strings[key] : null;
-  if (s == null){
-    var en = getLang('en');
-    if (en && en.strings && en.strings[key] != null) s = en.strings[key];
-  }
-  if (s == null) s = key;
-  if (params){
-    Object.keys(params).forEach(function(k){
-      s = s.split('{' + k + '}').join(String(params[k]));
-    });
-  }
-  return s;
-}
+/* TEMPORARY migration bridge — removed in the final commit.
+   Publishes the functions still defined below that already-extracted
+   modules call as DC.<ns>.<fn>() at run time. */
+DC.list = DC.list || {};
+DC.list.render = render;
 
-/* ================= App state ================= */
-var state = {
-  depots: [],          // [{id, name, items:[{id,name,location,amount,category}]}]
-  activeDepotId: null,
-  nextDepotId: 1,
-  nextItemId: 1,
-  items: [],           // LIVE alias of the active depot's items (kept in sync)
-  /* Fix (depot icon picker): icons live in a SEPARATE map (id -> emoji), never on the
-     depot objects; depots without a custom icon are simply absent (📦 fallback). */
-  depotIcons: {},
-  filter: '',
-  sort: { key: null, dir: null }, // Fix (sortable columns): UI state only — not persisted; reset on depot switch
-  selectedIds: {}, // Fix (batch select): page-scoped selection map (id -> true); not persisted
-  editingId: null,
-  lang: 'en',
-  /* Fix (settings): user preferences (persisted separately in localStorage) */
-  fontScale: 'normal',
-  iconScale: 'normal',
-  page: 1,
-  pageSize: 5
-};
 var storageOk = true;
-
-/* ================= Depot helpers ================= */
-function findDepot(id){
-  for (var i = 0; i < state.depots.length; i++){
-    if (state.depots[i].id === id) return state.depots[i];
-  }
-  return null;
-}
-function activeDepot(){
-  return findDepot(state.activeDepotId);
-}
-/* Keep state.items pointing at the active depot's items array so every
-   existing item operation (search, edit, delete, import...) is scoped. */
-function syncItemsRef(){
-  var d = activeDepot();
-  state.items = d ? d.items : [];
-}
-
-/* ================= DOM refs ================= */
-function $(id){ return document.getElementById(id); }
-var el = {};
-['banner','formTitle','productForm',
- 'inpName','nameError','inpLoc','lblName','lblLoc','btnSubmit',
- 'inpCategory','lblCategory',
- 'inpSearch','btnSortName','btnSortLoc','btnSortCat','colNameHead','colLocHead','colCategoryHead','listBody','itemCount','btnExport','lblExport','listFoot',
- 'btnImportTrigger','lblImport','inpImport','overlay','modalTitle','modalText',
- 'modalOk','modalCancel','toast','formCard','nameSuggest','disclaimerText',
- 'appRoot','bootstrapError','pagination','ghLink','btnToggleAdd','btnCloseForm',
- 'selPageSize','lblPageSize','btnClearSearch','modalList','importReport',
- 'impReportTitle','impReportSummary','impReportList','btnReportClose',
- 'btnTheme','depotSelect','depotSelectName','depotMenu','modalInput',
- 'toolbar','searchWrap','saveIndicator','saveIndText','skipLink',
- 'btnShortcuts','ksOverlay','ksTitle','ksBody','ksClose','hintAddJump',
- 'srAnnouncer','srAnnouncerAssertive','stockListTitle','lblImportFile',
- 'inpAmount','lblAmount','amountError','colAmount','selectAll','btnDelSelected','delSelCount','editSelCount',
- /* Fix (bulk edit): three-step bulk edit modal elements */
- 'btnEditSelected','bulkOverlay1','bulkTitle1','bulkHint1','bulkChkName','bulkLblName','bulkInpName',
- 'bulkChkLoc','bulkLblLoc','bulkInpLoc','bulkChkAmount','bulkLblAmount','bulkInpAmount',
- 'bulkChkCategory','bulkLblCategory','bulkInpCategory',
- 'bulkErr1','bulkWarnLoc','bulkWarnCat','bulkCancel1','bulkContinue',
- 'bulkOverlay2','bulkTitle2','bulkP2','bulkChangesList','bulkP3','bulkMergeList','bulkErr2','bulkCancel2','bulkApply',
- 'bulkOverlay3','bulkTitle3','bulkP4','bulkReportList','bulkClose3',
- /* Fix (depot icon picker) */
- 'btnDepotIcon','depotIconEmoji','iconPickerOverlay','iconPickerTitle','iconGrid','iconPickerSave','iconPickerCancel',
- /* Fix (settings): settings modal */
- 'btnSettings','settingsOverlay','settingsTitle','setLang','lblSetLang','setFont','lblSetFont','setIcon','lblSetIcon','btnResetSettings','setClose',
- /* Fix (new category modal) */
- 'catOverlay','catModalTitle','catModalLbl','catModalInput','catModalHint','catModalCancel','catModalSave'
-].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
 
@@ -3195,14 +3092,6 @@ function bulkTabTrap(ev){
   }
 }
 
-/* ================= Screen reader announcements ================= */
-function announce(msg, assertive){
-  var target = assertive ? el.srAnnouncerAssertive : el.srAnnouncer;
-  if (!target) return;
-  target.textContent = '';
-  target.textContent = msg;
-}
-
 /* ================= Event wiring & init ================= */
 function bindEvents(){
   el.productForm.addEventListener('submit', handleFormSubmit);
@@ -3532,12 +3421,6 @@ function bindEvents(){
       closeDepotMenu();
     }
   });
-}
-function setLang(lang){
-  state.lang = lang;
-  state.editingId = null; // re-render would discard unsaved edits
-  try { localStorage.setItem(LS_LANG, lang); } catch(e){}
-  render();
 }
 
 function init(){
