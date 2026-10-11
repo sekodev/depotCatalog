@@ -1,0 +1,50 @@
+/* ---------- Stock list ---------- */
+.list-card{padding:0;overflow:hidden}
+.list-head{
+  /* Fix (header alignment): the Actions header cell is empty, so its `auto` track sized to
+     0 — while a row's Actions cell holds two 44px icon buttons plus a .35rem gap (93.6px).
+     Both grids share one template, but a different last track grew every `fr` column in the
+     header, pushing the Location/Amount/Category headers right of the values below them.
+     Pinning the header's last track to that same width makes all six tracks — and therefore
+     the header text — sit flush left with each column's cells. The empty cell itself renders
+     identically, and mobile redefines .list-head (hiding these cells), so only >720px changes. */
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1.4fr .6fr calc(44px * 2 + .35rem);gap:.75rem;align-items:center; /* Fix (field order + amount width): tracks are check|name|loc|category|amount|actions */
+  padding:.6rem 1rem;font-size:.75rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  border-bottom:1px solid var(--border);
+}
+/* Fix (revert): Location/Amount headers are left-aligned again — the center rule for these two headers was removed with this change */
+/* Fix (sortable columns): the header buttons look like the old plain labels */
+.sort-btn{
+  background:none;border:none;padding:0;margin:0;
+  font:inherit;letter-spacing:inherit;text-transform:inherit;
+  color:inherit;cursor:pointer;text-align:left;
+}
+.sort-btn:hover{color:var(--accent)}
+.sort-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Fix (batch select): checkbox column — select-all header cell + row checkboxes */
+.check-head{display:flex;align-items:center}
+.row .check{display:flex;align-items:center}
+.row.editing .check{flex:none;align-self:center}
+input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
+.row{
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1.4fr .6fr auto;gap:.75rem;align-items:center; /* Fix (field order + amount width) */
+  padding:.6rem 1rem;border-bottom:1px solid var(--border);
+}
+.row:last-child{border-bottom:none}
+.row .name{word-break:break-word}
+.row .loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word} /* Fix: line-height:1.2 — identical vertical metrics with Amount; left-aligned (revert) */
+.row .amount{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word} /* Fix (vertical alignment): same mono font + line-height as Location — identical line box; left-aligned (revert) */
+/* Fix (category): Category cell mirrors Location/Amount exactly (same mono font, size,
+   line-height and left alignment) so the three columns line up vertically. */
+.row .category{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;line-height:1.2;word-break:break-word}
+.row .actions{display:flex;gap:.35rem}
+.icon-btn{
+  background:none;border:1px solid transparent;border-radius:8px;
+  width:44px;height:44px;font-size:calc(1.15rem * var(--app-icon-scale));line-height:1;cursor:pointer;
+  color:var(--muted);
+}
+.icon-btn:hover{background:var(--bg);color:var(--text)}
+.icon-btn.del:hover{color:var(--danger);background:var(--danger-bg)}
+.empty-state{padding:2rem 1rem;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.5}
+

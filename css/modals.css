@@ -1,0 +1,33 @@
+/* ---------- Banner / Modal / Toast ---------- */
+.banner{
+  background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);
+  border-radius:var(--radius);padding:.7rem 1rem;font-size:.9rem;line-height:1.45;
+}
+.overlay{
+  position:fixed;inset:0;background:rgba(10,14,20,.55);
+  display:flex;align-items:center;justify-content:center;padding:1rem;z-index:50;
+}
+.modal{
+  background:var(--surface);border-radius:var(--radius);
+  max-width:420px;width:100%;padding:1.25rem;
+  box-shadow:0 12px 32px rgba(0,0,0,.28);
+}
+.modal h2{font-size:1.05rem;margin-bottom:.5rem}
+.modal p{font-size:.95rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5;white-space:pre-line}
+.modal-actions{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:max(1.25rem,env(safe-area-inset-bottom,0px));
+  background:var(--surface);color:var(--text);
+  border:1px solid var(--border);
+  padding:.7rem 1.15rem;border-radius:10px;font-size:.9rem;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+  z-index:60;opacity:0;transition:opacity .25s ease;
+  pointer-events:none;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1}
+.toast-success{border-left:4px solid #2e9e5b}
+.toast-warn{border-left:4px solid #e6a23c}
+.toast-error{border-left:4px solid #e0524a}
+.toast-info{border-left:4px solid var(--accent)}
+

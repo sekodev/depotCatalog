@@ -1,0 +1,128 @@
+/* ---------- Depot selector (title area) ---------- */
+.title-area{
+  position:relative;display:flex;align-items:center;gap:.4rem;
+  min-width:0;font-size:1.35rem;margin:0;
+}
+/* Fix (depot icon picker): the app icon became its own clickable button */
+.app-icon-btn{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:2.15rem;height:2.15rem;padding:0;border:1px solid transparent;border-radius:8px;
+  background:none;color:inherit;cursor:pointer;font-size:1.35rem;line-height:1;font-family:inherit;
+}
+.app-icon-btn:hover{background:var(--bg);border-color:var(--border)}
+.app-icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Icon picker: 4 columns x 5 rows of preset emoji */
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:0 0 .9rem}
+.icon-grid .icon-pick{
+  font-size:1.5rem;line-height:1;padding:.5rem 0;cursor:pointer;font-family:inherit;
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+}
+.icon-grid .icon-pick:hover{border-color:var(--accent)}
+.icon-grid .icon-pick:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* applied icon = subtle outline; pending selection = strong highlight (Fix: save/cancel) */
+.icon-grid .icon-pick.applied{border-color:var(--muted)}
+.icon-grid .icon-pick.selected{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface)}
+.depot-select{
+  display:inline-flex;align-items:center;gap:.4rem;min-width:0;
+  background:none;border:none;color:var(--text);cursor:pointer;
+  padding:.3rem .5rem;border-radius:8px;
+  font-size:1.2rem;font-weight:700;font-family:inherit;
+}
+.depot-select:hover{background:var(--bg)}
+.depot-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#depotSelectName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-caret{font-size:inherit;line-height:1;color:var(--muted);flex:none}
+.row.editing .hint-inline{flex-basis:100%;margin-top:.15rem}
+.depot-menu{
+  position:absolute;top:calc(100% + 6px);left:0;min-width:250px;max-width:min(340px,calc(100vw - 2rem));
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.22);z-index:80;padding:.35rem;
+  display:flex;flex-direction:column;gap:.15rem;
+}
+.dd-row{display:flex;align-items:center;gap:.25rem;padding:.15rem .25rem;border-radius:8px}
+.dd-row:hover{background:var(--bg)}
+.dd-name{
+  flex:1;min-width:0;text-align:left;background:none;border:none;
+  color:var(--text);font-size:.95rem;font-weight:600;cursor:pointer;
+  padding:.5rem .5rem;border-radius:6px;font-family:inherit;overflow-wrap:anywhere;
+}
+.dd-name:hover{background:var(--bg)}
+.dd-name:focus-visible{outline:2px solid var(--accent)}
+.dd-name[aria-selected="true"]{font-weight:700;background:var(--bg)}
+.dd-row .icon-btn{flex:none;width:36px;height:36px;font-size:1rem}
+.dd-add-row{border-top:1px solid var(--border);margin-top:.3rem;padding-top:.3rem}
+.dd-add{
+  width:100%;text-align:left;background:none;border:none;
+  color:var(--accent);font-weight:600;cursor:pointer;
+  padding:.55rem .5rem;border-radius:6px;font-family:inherit;font-size:.95rem;
+}
+.dd-add:hover{background:var(--bg)}
+.dd-add:focus-visible{outline:2px solid var(--accent)}
+.modal-input{
+  width:100%;padding:.55rem .65rem;font-size:1rem;margin-bottom:1rem;
+  border:1px solid var(--accent);border-radius:8px;
+  background:var(--surface);color:var(--text);font-family:inherit;
+}
+.modal-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Fix (bulk edit): step modals — checkbox+label+input rows, hints and warnings */
+.bulk-modal{max-width:480px}
+.bulk-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.bulk-row input[type="checkbox"]{width:1.1rem;height:1.1rem;flex:none}
+.bulk-row label{flex:none;min-width:5.5rem;font-size:.95rem;font-weight:600}
+.bulk-row input[type="text"],.bulk-row input[type="number"]{flex:1;min-width:0}
+.bulk-row input:disabled{opacity:.45}
+.bulk-hint{font-size:.9rem;color:var(--muted);margin:0 0 .6rem;line-height:1.4}
+.bulk-warn{font-size:.85rem;color:var(--warn, #b8860b);margin:.2rem 0 .4rem}
+.bulk-modal .modal-list{max-height:220px}
+
+/* Fix (category dropdown): the Category field is a <select> that reuses the surrounding
+   field look. New classes only — no existing rule is modified. */
+.cat-select{
+  width:100%;padding:.65rem .75rem;font-size:1rem;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer;
+}
+.cat-select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bulk-row .cat-select{flex:1;min-width:0}
+.bulk-row .cat-select:disabled{opacity:.45}
+.edit-field .cat-select{
+  padding:.4rem .55rem;font-size:1rem;
+  border:1px solid var(--accent);border-radius:6px;background:var(--surface);
+}
+.edit-field .cat-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Fix (amount width): Amount is narrower than the other fields — it holds a short number.
+   Height (and therefore the 44px touch target) is untouched; inputs stay left-aligned. */
+#inpAmount{max-width:7rem}
+#bulkInpAmount{flex:0 1 7rem;max-width:7rem}
+.row.editing .edit-field-amount{flex:0 1 6.5rem;max-width:6.5rem}
+/* Fix (new category modal): its own dialog, stacked above every other surface. */
+#catOverlay{z-index:55}
+.cat-modal .modal-input{margin-bottom:.35rem}
+.cat-modal .hint-inline{font-size:.8rem;line-height:1.35;margin:0 0 1rem}
+.cat-modal .btn[disabled]{opacity:.5;cursor:default}
+
+/* Save indicator: small subtle pill on the same line, right of the depot selector */
+.depot-select-wrap{display:inline-flex;align-items:center;gap:.55rem;min-width:0}
+.save-indicator{
+  font-size:.8rem;color:var(--muted);
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  box-shadow:var(--shadow);
+  padding:.22rem .6rem;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:.35rem;flex:none;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s ease, visibility 0s linear .25s;
+  visibility:hidden;
+}
+.save-indicator.show{
+  opacity:1;pointer-events:auto;visibility:visible;
+  transition:opacity .25s ease;
+}
+@media (prefers-reduced-motion: reduce){
+  .save-indicator{transition:none}
+  .save-indicator.show{transition:none}
+  .toast{transition:none}
+  .theme-switch{transition:none}
+  .theme-switch::after{transition:none}
+}
+/* Fix: removed dead .save-indicator:focus-visible rule — element is aria-hidden and not focusable (audit #9) */
+

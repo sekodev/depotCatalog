@@ -1,0 +1,42 @@
+/* ---------- Responsive: desktop ---------- */
+@media (min-width:721px){
+  /* Fix (Location alignment): align-items start — all three inputs share the same
+     top edge; the reserved error/hint areas hang below the inputs without moving them
+     (end-alignment dropped the shorter Location input ~1.28rem lower). */
+  form#productForm{grid-template-columns:2fr 1.5fr 1.2fr .7fr auto;align-items:start} /* Fix (field order + amount width): name|loc|category|amount|submit */
+  /* Fix (Location alignment): push the submit button down past the label, onto the
+     input line (replaces the Phase 5 margin-bottom bottom-alignment hack) */
+  .form-actions{margin-top:1.21rem}
+  .search-wrap{max-width:440px}
+}
+
+/* ---------- Responsive: mobile ---------- */
+@media (max-width:720px){
+  body{padding-left:.75rem;padding-right:.75rem}
+  h1{font-size:1.15rem}
+  header{flex-direction:column;align-items:stretch}
+  .title-area{width:100%;font-size:1.2rem}
+  .header-controls{justify-content:flex-end}
+  /* Fix (batch select): mobile shows a slim header row with only the select-all
+     checkbox (text headers stay hidden as before) */
+  .list-head{display:grid;grid-template-columns:auto 1fr;padding:.45rem .85rem}
+  .list-head > div:not(.check-head){display:none}
+  .row{
+    grid-template-columns:auto 1fr auto;
+    grid-template-areas:"check name actions" "check loc actions" "check cat actions" "check amount actions"; /* Fix (field order) */
+    row-gap:.2rem;padding:.7rem .85rem;
+  }
+  .row .name{grid-area:name;font-weight:600}
+  .row .loc{grid-area:loc}
+  .row .amount{grid-area:amount}
+  .row .category{grid-area:cat}
+  .row .check{grid-area:check}
+  .row .actions{grid-area:actions;flex-direction:column;align-self:center}
+  .toolbar{gap:.7rem}
+  .toolbar .group-export{flex-direction:column;align-items:stretch}
+  .toolbar .group-export .btn{width:100%}
+  .toolbar .btn-toggle-add{margin-left:0;width:100%}
+  .count{text-align:center}
+  .import-area{width:100%;align-items:stretch}
+  .import-area .btn{width:100%}
+}

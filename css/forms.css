@@ -1,0 +1,43 @@
+/* ---------- Name suggestions dropdown ---------- */
+.field{position:relative}
+.suggest{
+  position:absolute;top:100%;left:0;right:0;z-index:20;margin-top:.15rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;
+}
+.suggest-item{
+  display:flex;justify-content:space-between;gap:.75rem;
+  padding:.55rem .75rem;font-size:.92rem;cursor:default;
+  border-bottom:1px solid var(--border);
+}
+.suggest-item:last-child{border-bottom:none}
+.suggest-item .sg-name{word-break:break-word}
+.suggest-item .sg-loc{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}
+
+/* ---------- Add-form toggle & close ---------- */
+.form-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;gap:.5rem}
+.form-head h2{margin-bottom:0}
+#btnCloseForm{border:1px solid var(--border)}
+
+/* ---------- Inline row editing ---------- */
+.row.editing{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;
+  background:rgba(77,148,240,.12);box-shadow:inset 3px 0 0 var(--accent)}
+.row.editing .edit-field{flex:1 1 150px;min-width:0}
+.edit-input{
+  width:100%;padding:.4rem .55rem;font-size:1rem;
+  border:1px solid var(--accent);border-radius:6px;
+  background:var(--surface);color:var(--text);font-family:inherit;
+}
+/* Fix (revert): the Location/Amount inline inputs are left-aligned again — the centering rule for these two inputs was removed */
+.edit-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn-sm{min-height:38px;min-width:38px;padding:.3rem .65rem;font-size:.85rem}
+
+/* ---------- Page-size selector ---------- */
+.psize{display:inline-flex;align-items:center;gap:.4rem}
+.psize select{
+  padding:.3rem .5rem;font-size:.9rem;min-height:38px;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;
+}
+
+
