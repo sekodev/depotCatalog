@@ -211,7 +211,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
      Pinning the header's last track to that same width makes all six tracks — and therefore
      the header text — sit flush left with each column's cells. The empty cell itself renders
      identically, and mobile redefines .list-head (hiding these cells), so only >720px changes. */
-  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr 1fr calc(44px * 2 + .35rem);gap:.75rem;align-items:center;
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1.4fr .6fr calc(44px * 2 + .35rem);gap:.75rem;align-items:center; /* Fix (field order + amount width): tracks are check|name|loc|category|amount|actions */
   padding:.6rem 1rem;font-size:.75rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
   border-bottom:1px solid var(--border);
@@ -231,7 +231,7 @@ input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{ou
 .row.editing .check{flex:none;align-self:center}
 input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 .row{
-  display:grid;grid-template-columns:auto 2fr 1.5fr 1fr 1fr auto;gap:.75rem;align-items:center;
+  display:grid;grid-template-columns:auto 2fr 1.5fr 1.4fr .6fr auto;gap:.75rem;align-items:center; /* Fix (field order + amount width) */
   padding:.6rem 1rem;border-bottom:1px solid var(--border);
 }
 .row:last-child{border-bottom:none}
@@ -490,6 +490,32 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
 .bulk-warn{font-size:.85rem;color:var(--warn, #b8860b);margin:.2rem 0 .4rem}
 .bulk-modal .modal-list{max-height:220px}
 
+/* Fix (category dropdown): the Category field is a <select> that reuses the surrounding
+   field look. New classes only — no existing rule is modified. */
+.cat-select{
+  width:100%;padding:.65rem .75rem;font-size:1rem;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer;
+}
+.cat-select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bulk-row .cat-select{flex:1;min-width:0}
+.bulk-row .cat-select:disabled{opacity:.45}
+.edit-field .cat-select{
+  padding:.4rem .55rem;font-size:1rem;
+  border:1px solid var(--accent);border-radius:6px;background:var(--surface);
+}
+.edit-field .cat-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Fix (amount width): Amount is narrower than the other fields — it holds a short number.
+   Height (and therefore the 44px touch target) is untouched; inputs stay left-aligned. */
+#inpAmount{max-width:7rem}
+#bulkInpAmount{flex:0 1 7rem;max-width:7rem}
+.row.editing .edit-field-amount{flex:0 1 6.5rem;max-width:6.5rem}
+/* Fix (new category modal): its own dialog, stacked above every other surface. */
+#catOverlay{z-index:55}
+.cat-modal .modal-input{margin-bottom:.35rem}
+.cat-modal .hint-inline{font-size:.8rem;line-height:1.35;margin:0 0 1rem}
+.cat-modal .btn[disabled]{opacity:.5;cursor:default}
+
 /* Save indicator: small subtle pill on the same line, right of the depot selector */
 .depot-select-wrap{display:inline-flex;align-items:center;gap:.55rem;min-width:0}
 .save-indicator{
@@ -609,7 +635,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   /* Fix (Location alignment): align-items start — all three inputs share the same
      top edge; the reserved error/hint areas hang below the inputs without moving them
      (end-alignment dropped the shorter Location input ~1.28rem lower). */
-  form#productForm{grid-template-columns:2fr 1.5fr 1fr 1fr auto;align-items:start}
+  form#productForm{grid-template-columns:2fr 1.5fr 1.2fr .7fr auto;align-items:start} /* Fix (field order + amount width): name|loc|category|amount|submit */
   /* Fix (Location alignment): push the submit button down past the label, onto the
      input line (replaces the Phase 5 margin-bottom bottom-alignment hack) */
   .form-actions{margin-top:1.21rem}
@@ -629,7 +655,7 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
   .list-head > div:not(.check-head){display:none}
   .row{
     grid-template-columns:auto 1fr auto;
-    grid-template-areas:"check name actions" "check loc actions" "check amount actions" "check cat actions";
+    grid-template-areas:"check name actions" "check loc actions" "check cat actions" "check amount actions"; /* Fix (field order) */
     row-gap:.2rem;padding:.7rem .85rem;
   }
   .row .name{grid-area:name;font-weight:600}
@@ -708,11 +734,12 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <div id="colLocHead" role="columnheader" aria-sort="none">
         <button type="button" id="btnSortLoc" class="sort-btn" aria-label=""></button>
       </div>
-      <div role="columnheader" id="colAmountHead"><span id="colAmount"></span></div>
-      <!-- Fix (category): Category header is sortable (same 3-state cycle as Name/Location) -->
+      <!-- Fix (field order): Category column now precedes Amount.
+           Category is sortable (same 3-state cycle as Name/Location) -->
       <div id="colCategoryHead" role="columnheader" aria-sort="none">
         <button type="button" id="btnSortCat" class="sort-btn" aria-label=""></button>
       </div>
+      <div role="columnheader" id="colAmountHead"><span id="colAmount"></span></div>
       <div role="columnheader"><span></span></div>
     </div>
     <!-- a11y: list semantics (safer than table roles: inline-edit inputs inside rows
@@ -790,17 +817,18 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
              directly above the Import from CSV button (see .import-area below).
              aria-describedby on #inpLoc resolves by id wherever the element sits. -->
       </div>
+      <!-- Fix (field order): Category now precedes Amount -> Name, Location, Category, Amount.
+           The Category field is a <select>; its first option opens the "new category" modal.
+           Empty stays valid — no validation and no reserved error area. -->
+      <div class="field">
+        <label for="inpCategory" id="lblCategory"></label>
+        <select id="inpCategory" class="cat-select" autocomplete="off"></select>
+      </div>
       <!-- Fix (Phase 4): Amount field — visible label, number input, inline error linked via aria-describedby -->
       <div class="field">
         <label for="inpAmount" id="lblAmount"></label>
         <input type="number" id="inpAmount" min="0" step="1" value="1" autocomplete="off" aria-describedby="amountError" aria-invalid="false">
         <p id="amountError" class="err" role="alert"></p>
-      </div>
-      <!-- Fix (category): free-text Category field. Empty is valid — no validation and
-           no reserved error area; Enter here submits the form (focus chain ends here). -->
-      <div class="field">
-        <label for="inpCategory" id="lblCategory"></label>
-        <input type="text" id="inpCategory" maxlength="120" autocomplete="off">
       </div>
       <div class="form-actions field">
         <button type="submit" id="btnSubmit" class="btn btn-primary"></button>
@@ -873,17 +901,18 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
       <label for="bulkChkLoc" id="bulkLblLoc"></label>
       <input type="text" id="bulkInpLoc" maxlength="120" autocomplete="off" aria-labelledby="bulkLblLoc" aria-describedby="bulkErr1" aria-invalid="false" disabled>
     </div>
+    <!-- Fix (field order): Category row now precedes the Amount row.
+         Same checkbox + label + control row pattern; the label (for=) names the
+         checkbox AND the select (aria-labelledby) -->
+    <div class="bulk-row">
+      <input type="checkbox" id="bulkChkCategory">
+      <label for="bulkChkCategory" id="bulkLblCategory"></label>
+      <select id="bulkInpCategory" class="cat-select" autocomplete="off" aria-labelledby="bulkLblCategory" aria-describedby="bulkErr1" aria-invalid="false" disabled></select>
+    </div>
     <div class="bulk-row">
       <input type="checkbox" id="bulkChkAmount">
       <label for="bulkChkAmount" id="bulkLblAmount"></label>
       <input type="number" id="bulkInpAmount" min="0" step="1" autocomplete="off" aria-labelledby="bulkLblAmount" aria-describedby="bulkErr1" aria-invalid="false" disabled>
-    </div>
-    <!-- Fix (category): 4th bulk field — same checkbox + label + input row pattern;
-         the label (for=) names the checkbox AND the input (aria-labelledby) -->
-    <div class="bulk-row">
-      <input type="checkbox" id="bulkChkCategory">
-      <label for="bulkChkCategory" id="bulkLblCategory"></label>
-      <input type="text" id="bulkInpCategory" maxlength="120" autocomplete="off" aria-labelledby="bulkLblCategory" aria-describedby="bulkErr1" aria-invalid="false" disabled>
     </div>
     <p id="bulkErr1" class="err" role="alert"></p>
     <p id="bulkWarnLoc" class="bulk-warn hidden"></p>
@@ -965,6 +994,22 @@ input[type="checkbox"]{accent-color:var(--accent);width:18px;height:18px}
     <div class="modal-actions">
       <button type="button" id="btnResetSettings" class="btn btn-secondary"></button>
       <button type="button" id="setClose" class="btn btn-primary"></button>
+    </div>
+  </div>
+</div>
+
+<!-- New-category modal (Fix: new category modal) — replaces the old inline editor -->
+<div class="overlay hidden" id="catOverlay">
+  <div class="modal cat-modal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+    <h2 id="catModalTitle"></h2>
+    <div class="field">
+      <label for="catModalInput" id="catModalLbl"></label>
+      <input type="text" id="catModalInput" class="modal-input" maxlength="120" autocomplete="off" aria-describedby="catModalHint" aria-invalid="false">
+    </div>
+    <p id="catModalHint" class="hint-inline"></p>
+    <div class="modal-actions">
+      <button type="button" id="catModalCancel" class="btn btn-secondary"></button>
+      <button type="button" id="catModalSave" class="btn btn-primary" disabled></button>
     </div>
   </div>
 </div>
@@ -1112,7 +1157,9 @@ var el = {};
  /* Fix (depot icon picker) */
  'btnDepotIcon','depotIconEmoji','iconPickerOverlay','iconPickerTitle','iconGrid','iconPickerSave','iconPickerCancel',
  /* Fix (settings): settings modal */
- 'btnSettings','settingsOverlay','settingsTitle','setLang','lblSetLang','setFont','lblSetFont','setIcon','lblSetIcon','btnResetSettings','setClose'
+ 'btnSettings','settingsOverlay','settingsTitle','setLang','lblSetLang','setFont','lblSetFont','setIcon','lblSetIcon','btnResetSettings','setClose',
+ /* Fix (new category modal) */
+ 'catOverlay','catModalTitle','catModalLbl','catModalInput','catModalHint','catModalCancel','catModalSave'
 ].forEach(function(id){ el[id] = $(id); });
 
 /* i18n helpers (LANGUAGES, languagesValid, getLang, detectLang, t) are defined near the top */
@@ -1567,6 +1614,12 @@ function applyStaticText(){
   el.bulkLblLoc.textContent = t('locLbl');
   el.bulkLblAmount.textContent = t('amount');
   el.bulkLblCategory.textContent = t('category'); // Fix (category): reuses the field-label key, like locLbl/amount
+  /* Fix (new category modal): title, label, helper text and buttons follow the language */
+  el.catModalTitle.textContent = t('catModalTitle');
+  el.catModalLbl.textContent = t('category');
+  el.catModalHint.textContent = t('catModalHint');
+  el.catModalCancel.textContent = t('cancel');
+  el.catModalSave.textContent = t('save');
   el.disclaimerText.textContent = t('disclaimer');
   el.nameSuggest.setAttribute('aria-label', t('suggestAria'));
   el.ghLink.setAttribute('aria-label', t('githubAria'));
@@ -1577,6 +1630,7 @@ function applyStaticText(){
   el.hintAddJump.textContent = t('hintAddJump');
   el.hintAddJump.classList.toggle('hidden', !hasDepot);
   applySettingsText(); // Fix (settings): labels + options for the settings modal
+  refreshCategorySelects(); // Fix (category dropdown): re-localize + re-derive the option lists
 }
 function getFilteredItems(){
   var q = state.filter.trim().toLowerCase();
@@ -1677,6 +1731,9 @@ function renderList(){
     row.appendChild(makeCell(it.name, 'name'));
     // Fix (dash for empty location): display-only placeholder; storage keeps ''
     row.appendChild(makeCell(it.location || '-', 'loc'));
+    // Fix (field order): Category cell now precedes Amount. Empty category shows "-"
+    // (display only; the stored value stays ''). Same rule as an empty Location.
+    row.appendChild(makeCell(it.category || '-', 'category'));
     // Fix (Phase 4): Amount cell with sr-only prefix so SR users hear "Amount: 3"
     var amtCell = document.createElement('div');
     amtCell.className = 'amount';
@@ -1686,9 +1743,6 @@ function renderList(){
     amtCell.appendChild(amtLbl);
     amtCell.appendChild(document.createTextNode(String(it.amount)));
     row.appendChild(amtCell);
-    // Fix (category): Category cell. Empty category shows "-" (display only; the
-    // stored value stays ''). Same rule as an empty Location.
-    row.appendChild(makeCell(it.category || '-', 'category'));
 
     var actions = document.createElement('div');
     actions.className = 'actions';
@@ -1798,7 +1852,7 @@ function resetForm(){
   el.inpName.value = '';
   el.inpLoc.value = '';
   el.inpAmount.value = '1'; // Fix (Phase 4): Amount resets to default 1 (serial entry)
-  el.inpCategory.value = ''; // Fix (category): Category resets to empty (serial entry)
+  fillCategorySelect(el.inpCategory, ''); // Fix (category dropdown): back to "Add new category"; also refreshes the options so a just-saved category is offered here
   el.nameError.textContent = ''; // Fix (Phase 5): clear in place — reserved area stays
   el.amountError.textContent = '';
   setInvalid(el.inpName, false);   // Fix (a11y audit C1): reset clears the error state
@@ -1955,7 +2009,7 @@ function buildEditRow(it){
   locInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      amountInput.focus(); // Fix (Phase 4): Name -> Location -> Amount -> Save
+      catInput.focus(); // Fix (field order): Location -> Category
     } else if (ev.key === 'Escape'){
       ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
       cancelInlineEdit();
@@ -1964,9 +2018,34 @@ function buildEditRow(it){
   locWrap.appendChild(locInput);
   row.appendChild(locWrap);
 
+  // Fix (field order): Category is built (and appended) BEFORE Amount so the row reads
+  // Name -> Location -> Category -> Amount. Its value is still read from .value; empty
+  // means "Add new category" (the "-" is display-only).
+  var catWrap = document.createElement('div');
+  catWrap.className = 'edit-field';
+  var catInput = document.createElement('select');
+  catInput.className = 'edit-input edit-category cat-select';
+  catInput.setAttribute('aria-label', t('category'));
+  catInput.setAttribute('aria-describedby', 'hintInlineEdit');
+  catInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
+  fillCategorySelect(catInput, it.category); // empty category => "Add new category"
+  setupCategorySelect(catInput);
+  catInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      if (catModalIsOpen()) return; // the "new category" modal owns Enter while it is open
+      amountInput.focus(); // Fix (field order): Category -> Amount
+    } else if (ev.key === 'Escape'){
+      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
+      cancelInlineEdit();
+    }
+  });
+  catWrap.appendChild(catInput);
+  row.appendChild(catWrap);
+
   // Fix (Phase 4): Amount is editable inline along with Name and Location
   var amountWrap = document.createElement('div');
-  amountWrap.className = 'edit-field';
+  amountWrap.className = 'edit-field edit-field-amount'; // Fix (amount width): narrower track
   var amountInput = document.createElement('input');
   amountInput.type = 'number';
   amountInput.min = '0';
@@ -1980,7 +2059,7 @@ function buildEditRow(it){
   amountInput.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      catInput.focus(); // Fix (category): Name -> Location -> Amount -> Category -> Save
+      saveInlineEdit(); // Fix (field order): Amount is now last -> Enter saves the row
     } else if (ev.key === 'Escape'){
       ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
       cancelInlineEdit();
@@ -1996,31 +2075,6 @@ function buildEditRow(it){
   amountErr.setAttribute('role', 'alert');
   amountWrap.appendChild(amountErr);
   row.appendChild(amountWrap);
-
-  // Fix (category): Category is editable inline too (free text, no validation).
-  // Enter saves the row; Escape cancels (same as the other edit inputs).
-  var catWrap = document.createElement('div');
-  catWrap.className = 'edit-field';
-  var catInput = document.createElement('input');
-  catInput.type = 'text';
-  catInput.maxLength = 120;
-  catInput.className = 'edit-input edit-category';
-  catInput.value = it.category; // empty category => empty input (the "-" is display-only)
-  catInput.setAttribute('aria-label', t('category'));
-  catInput.setAttribute('aria-describedby', 'hintInlineEdit');
-  catInput.setAttribute('aria-invalid', 'false'); // Fix (a11y audit C1)
-  catInput.addEventListener('input', function(){ autoCapitalizeFirst(catInput); setInvalid(catInput, false); }); // Fix (settings task)
-  catInput.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter' && !ev.isComposing){
-      ev.preventDefault();
-      saveInlineEdit(); // Enter in Category saves the row
-    } else if (ev.key === 'Escape'){
-      ev.stopPropagation(); // Fix (Phase 5): Escape cancels the edit only (priority over the Add form)
-      cancelInlineEdit();
-    }
-  });
-  catWrap.appendChild(catInput);
-  row.appendChild(catWrap);
 
   var actions = document.createElement('div');
   actions.className = 'actions';
@@ -2056,6 +2110,172 @@ function buildEditRow(it){
 function setInvalid(input, on){
   if (!input) return;
   input.setAttribute('aria-invalid', on ? 'true' : 'false');
+}
+/* ================= Category dropdown (Fix: category dropdown) ================= */
+/* The Category field is a <select> whose FIRST option is "Add new category" (value '').
+   Choosing it opens the "new category" MODAL (Fix: new category modal — it used to be an
+   inline editor). The option list is derived at render time from the ACTIVE depot's items
+   (unique, case-insensitive, trimmed, non-empty; first-seen casing kept; sorted A->Z) and
+   is preceded by a non-selectable "------" separator. A typed value becomes an option only
+   once an item is saved with it — unsaved typing is discarded. Category stays a free-text
+   string on the item; CSV import/export, the list's "-" placeholder, search matching and
+   duplicate detection (name + location) are all unchanged. */
+
+/* Unique, case-insensitive categories of the active depot (first-seen casing, A->Z). */
+function categoryOptions(){
+  var seen = {}, out = [];
+  (state.items || []).forEach(function(it){
+    if (!it || typeof it.category !== 'string') return;
+    var v = it.category.trim();
+    if (!v) return;
+    var k = v.toLowerCase();
+    if (seen[k]) return;
+    seen[k] = true;
+    out.push(v);
+  });
+  out.sort(function(a, b){
+    var x = a.toLowerCase(), y = b.toLowerCase();
+    return (x < y) ? -1 : (x > y ? 1 : 0);
+  });
+  return out;
+}
+/* Rebuild the options, then restore `current` as the selected value. A value that is not
+   an option yet (typed but not saved) is added as a transient option so it can display. */
+function fillCategorySelect(sel, current){
+  if (!sel) return;
+  var val = (current == null) ? '' : String(current);
+  var seen = {};
+  sel.innerHTML = '';
+  /* Fix (category order): the non-selectable "------" divider is the FIRST entry now, ahead
+     of "Add new category". Display-only - it is an <option>, so it can never reach the item
+     data, the CSV export or any other output. */
+  var sep = document.createElement('option');
+  sep.disabled = true;
+  sep.value = CAT_SEP_VALUE;
+  sep.textContent = '------';
+  sel.appendChild(sep);
+  /* Fix (category order): "Add new category" carries a sentinel value, so picking it is
+     always a real value change and `change` therefore always fires. An entry whose value
+     equals the empty state can be re-picked silently (no event at all). */
+  var addNew = document.createElement('option');
+  addNew.value = CAT_NEW_VALUE;
+  addNew.textContent = t('categoryDropdownAddNew');
+  sel.appendChild(addNew);
+  /* Fix (category order): the empty state still shows "Add new category", but through its
+     own value (""), so the entry above stays re-selectable. display:none on an <option>
+     keeps it out of the popup (Chromium/Firefox), so the visible list still reads
+     "------" -> "Add new category" -> categories. */
+  var rest = document.createElement('option');
+  rest.value = '';
+  rest.textContent = t('categoryDropdownAddNew');
+  rest.disabled = true;
+  rest.style.display = 'none';
+  sel.appendChild(rest);
+  categoryOptions().forEach(function(c){
+    seen[c.toLowerCase()] = true;
+    var o = document.createElement('option');
+    o.value = c;
+    o.textContent = c;
+    sel.appendChild(o);
+  });
+  if (val && !seen[val.toLowerCase()]){
+    var tmp = document.createElement('option');
+    tmp.value = val;
+    tmp.textContent = val;
+    sel.appendChild(tmp);
+  }
+  sel.value = val;
+  if (sel.selectedIndex < 0) sel.value = ''; // never leave the control blank
+  sel.__catValue = sel.value;                // committed value - the modal resets to this
+}
+/* An existing category wins over the typed casing; otherwise the typed value is kept. */
+function resolveCategoryCasing(v){
+  var lv = v.toLowerCase();
+  var list = categoryOptions();
+  for (var i = 0; i < list.length; i++){
+    if (list[i].toLowerCase() === lv) return list[i];
+  }
+  return v;
+}
+/* Refresh the Category dropdowns, keeping each one's current value selected. */
+function refreshCategorySelects(){
+  [el.inpCategory, el.bulkInpCategory].forEach(function(sel){
+    if (!sel) return;
+    fillCategorySelect(sel, sel.value);
+  });
+}
+/* ===== Fix (new category modal): the "Add new category" flow is a modal, not inline =====
+   The modal is opened from a Category <select>. Save writes the resolved value onto that
+   select; Cancel and Escape leave it on "Add new category" (empty). Focus always returns
+   to the select that triggered it. */
+var catModalTarget = null; // the Category <select> that opened the modal
+/* Fix (category order): option values for the "------" divider and for "Add new category".
+   Both start with NUL, so they can never collide with a real category (categories are free
+   text) - and the "Add new category" entry can never collide with the empty state. */
+var CAT_NEW_VALUE = '\u0000cat-new';
+var CAT_SEP_VALUE = '\u0000cat-sep';
+
+function catModalIsOpen(){
+  return !el.catOverlay.classList.contains('hidden');
+}
+function openCategoryModal(sel){
+  if (!sel || !document.contains(sel)) return;
+  catModalTarget = sel;
+  /* Fix (category order): put the dropdown back on the value it had before "Add new
+     category" was picked. It must not stay on that entry, otherwise picking it again would
+     not change the value and would not fire `change`. */
+  sel.value = (sel.__catValue == null) ? '' : sel.__catValue;
+  el.catModalInput.value = '';
+  setInvalid(el.catModalInput, false);
+  el.catModalSave.disabled = true; // stays disabled until the input is non-empty
+  el.catOverlay.classList.remove('hidden');
+  announce(t('categoryInlineEnterAnnouncement'));
+  try { el.catModalInput.focus(); } catch(e){}
+}
+/* Closes the dialog and returns focus to the dropdown that opened it. */
+function closeCategoryModal(){
+  el.catOverlay.classList.add('hidden');
+  el.catModalInput.value = '';
+  setInvalid(el.catModalInput, false);
+  el.catModalSave.disabled = true;
+  var back = catModalTarget;
+  catModalTarget = null;
+  if (back && document.contains(back)){ try { back.focus(); } catch(e){} }
+}
+function saveCategoryModal(){
+  var sel = catModalTarget;
+  if (!sel) return;
+  var raw = el.catModalInput.value.trim();
+  if (!raw) return; // Save is disabled in this state
+  var val = resolveCategoryCasing(raw); // existing casing wins, otherwise the typed casing
+  closeCategoryModal();                 // restores focus to the dropdown
+  /* The value becomes the field's value. It is deliberately NOT added to the option list
+     yet — it only becomes an option once an item is saved with it (fillCategorySelect
+     appends a transient option so the new value can still show as selected). */
+  if (document.contains(sel)) fillCategorySelect(sel, val);
+  announce(t('categorySetAnnouncement', { name: val }));
+}
+function cancelCategoryModal(){
+  var sel = catModalTarget;
+  var prev = (sel && sel.__catValue != null) ? sel.__catValue : ''; // value before "Add new category"
+  closeCategoryModal();                 // restores focus to the dropdown
+  if (sel && document.contains(sel)) fillCategorySelect(sel, prev); // back to the previous selection
+}
+/* Wire a Category <select>: picking "Add new category" opens the modal. */
+function setupCategorySelect(sel){
+  if (!sel || sel.__catReady) return;
+  sel.__catReady = true;
+  fillCategorySelect(sel, sel.value);
+  sel.addEventListener('change', function(){
+    /* Fix (category order): detected by value, not by label. The entry carries a sentinel
+       value, so this branch is always reached - picking it is always a value change. */
+    if (sel.value === CAT_NEW_VALUE){
+      openCategoryModal(sel); // opens the modal and reverts the dropdown to its previous value
+    } else {
+      sel.__catValue = sel.value; // remember the committed value for the modal reset
+      setInvalid(sel, false);
+    }
+  });
 }
 async function handleFormSubmit(ev){
   ev.preventDefault();
@@ -2184,9 +2404,9 @@ function handleExport(){
     okLabel: t('download')
   }).then(function(yes){
     if (!yes) return;
-    var lines = ['Name,Location,Amount,Category']; // Fix (category): Category column added
+    var lines = ['Name,Location,Category,Amount']; // Fix (field order): Category precedes Amount
     for (var i = 0; i < dep.items.length; i++){
-      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location) + ',' + String(dep.items[i].amount) + ',' + csvEscape(dep.items[i].category));
+      lines.push(csvEscape(dep.items[i].name) + ',' + csvEscape(dep.items[i].location) + ',' + csvEscape(dep.items[i].category) + ',' + String(dep.items[i].amount));
     }
     // BOM so spreadsheet apps detect UTF-8 correctly
     var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -2238,12 +2458,18 @@ function parseCsvRows(text){
 function analyzeCsvImport(text){
   var rows = parseCsvRows(text);
   if (rows.length === 0) return { error: true };
+  /* Fix (field order): the header must be exactly Name,Location,Category,Amount — matched by
+     name, case-insensitively and trimmed, IN THAT ORDER. The old order (…,Amount,Category) is
+     rejected. A trailing empty column (a stray final comma) is tolerated. */
   var header = rows[0].map(function(s){ return s.trim().toLowerCase(); });
-  var nameIdx = header.indexOf('name');
-  var locIdx = header.indexOf('location');
-  if (nameIdx === -1 || locIdx === -1) return { error: true };
-  var amountIdx = header.indexOf('amount'); // Fix (Phase 4): optional Amount column
-  var catIdx = header.indexOf('category'); // Fix (category): optional Category column
+  while (header.length && header[header.length - 1] === '') header.pop();
+  var wantHeader = ['name', 'location', 'category', 'amount'];
+  var headerOk = (header.length === wantHeader.length);
+  for (var hh = 0; headerOk && hh < wantHeader.length; hh++){
+    if (header[hh] !== wantHeader[hh]) headerOk = false;
+  }
+  if (!headerOk) return { error: true, badHeader: true };
+  var nameIdx = 0, locIdx = 1, catIdx = 2, amountIdx = 3;
   // keys of existing items: imported rows matching these are duplicates too
   var existingKeys = {};
   for (var e = 0; e < state.items.length; e++){
@@ -2304,7 +2530,12 @@ function handleImportFile(file){
   reader.onerror = function(){ showToast(t('invalidFile'), 'error'); announce(t('invalidFile'), true); };
   reader.onload = function(){
     var result = analyzeCsvImport(String(reader.result));
-    if (result.error){ showToast(t('csvBadHeader'), 'error'); announce(t('csvBadHeader'), true); return; }
+    if (result.error){
+      /* Fix (field order): a wrong header order gets its own message. Same error path as
+         before — toast + assertive live-region announcement (never a native alert). */
+      var badHeaderMsg = result.badHeader ? t('csvBadHeaderOrder') : t('csvBadHeader');
+      showToast(badHeaderMsg, 'error'); announce(badHeaderMsg, true); return;
+    }
     var skippedCount = result.dup.length + result.missing.length;
     var listItems = [];
     result.dup.forEach(function(d){
@@ -2470,7 +2701,11 @@ function openSettings(){
   settingsLastFocused = document.activeElement;
   applySettingsText();
   el.settingsOverlay.classList.remove('hidden');
-  try { el.setLang.focus(); } catch(e){}
+  /* Fix (settings focus): focus the Close button, NOT the Language <select>. Auto-focusing
+     a select makes mobile browsers pop the native picker the instant the dialog opens.
+     Focus still moves into the dialog and the Tab trap is untouched; Shift+Tab from Close
+     walks back through Reset -> Icon -> Font -> Language, so the order is unchanged. */
+  try { el.setClose.focus(); } catch(e){}
 }
 function closeSettings(){
   el.settingsOverlay.classList.add('hidden');
@@ -2918,17 +3153,18 @@ var SHORTCUT_SECTIONS = [
   { title: 'ksSearch', rows: [
     ['keyType', 'ksTypeDesc']
   ]},
+  /* Fix (field order): rows follow Name -> Location -> Category -> Amount */
   { title: 'ksAddProduct', rows: [
     ['keyEnterName', 'ksEnterNameDesc'],
     ['keyEnterLoc', 'ksEnterLocDesc'],
-    ['keyEnterAmount', 'ksEnterAmountDesc'], // Fix (category): Enter in Amount moves to Category
-    ['keyEnterCategory', 'ksEnterCatDesc']   // Fix (category): Enter in Category adds the product
+    ['keyEnterCategory', 'ksEnterCatDesc'],
+    ['keyEnterAmount', 'ksEnterAmountDesc']
   ]},
   { title: 'ksInlineEdit', rows: [
     ['keyEnterName', 'ksEnterNameDesc'],
     ['keyEnterLoc', 'ksEditEnterLocDesc'],
-    ['keyEnterAmount', 'ksEditEnterAmountDesc'], // Fix (category): Enter in Amount moves to Category
-    ['keyEnterCategory', 'ksEditEnterCatDesc'],  // Fix (category): Enter in Category saves
+    ['keyEnterCategory', 'ksEditEnterCatDesc'],
+    ['keyEnterAmount', 'ksEditEnterAmountDesc'],
     ['keyEsc', 'ksEditEscDesc']
   ]},
   { title: 'ksDepot', rows: [
@@ -3184,7 +3420,7 @@ function bulkResetFields(){
   el.bulkInpName.value = '';
   el.bulkInpLoc.value = '';
   el.bulkInpAmount.value = ''; // Amount empty => defaults to 1 at apply (no pre-fill)
-  el.bulkInpCategory.value = ''; // Category empty => clears the category for selected items
+  fillCategorySelect(el.bulkInpCategory, ''); // Fix (category dropdown): "Add new category" => clears the category for selected items
   el.bulkErr1.textContent = '';
   el.bulkWarnLoc.classList.add('hidden');
   el.bulkWarnCat.classList.add('hidden'); // Fix (category)
@@ -3586,27 +3822,29 @@ function bindEvents(){
     if (ev.key === 'Escape') hideSuggestions();
   });
   el.inpLoc.addEventListener('input', handleLocationInput);
-  /* Fix (settings task): Category auto-capitalizes the first letter, like Name/Location */
-  el.inpCategory.addEventListener('input', function(){ autoCapitalizeFirst(el.inpCategory); });
-  // Fix (Phase 4): keyboard flow is now Name -> Location -> Amount -> Category -> submit
-  // (previously Enter in Location submitted — audit #10 hardening carried forward)
+  /* Fix (category dropdown): Category is a <select> now — the old free-text auto-capitalize
+     listener is gone (a select's .value is an option value, never a typed string). The
+     first-letter rule now lives on the "new category" modal input instead. */
+  setupCategorySelect(el.inpCategory);
+  /* Fix (field order): keyboard flow is now Name -> Location -> Category -> Amount -> submit
+     (audit #10 hardening carried forward: Enter never submits before the last field). */
   el.inpLoc.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      el.inpAmount.focus();
+      el.inpCategory.focus(); // Location -> Category
+    }
+  });
+  el.inpCategory.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      if (catModalIsOpen()) return; // the "new category" modal owns Enter while it is open
+      el.inpAmount.focus(); // Category -> Amount
     }
   });
   el.inpAmount.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && !ev.isComposing){
       ev.preventDefault();
-      el.inpCategory.focus(); // Fix (category): Enter in Amount moves to Category
-    }
-  });
-  // Fix (category): Enter in Category submits the form (end of the focus chain)
-  el.inpCategory.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter' && !ev.isComposing){
-      ev.preventDefault();
-      el.btnSubmit.click();
+      el.btnSubmit.click(); // Amount is last -> Enter submits the form
     }
   });
   document.addEventListener('compositionstart', function(){ composing = true; });
@@ -3701,12 +3939,14 @@ function bindEvents(){
   el.bulkChkLoc.addEventListener('change', bulkToggleInputs);
   el.bulkChkAmount.addEventListener('change', bulkToggleInputs);
   el.bulkChkCategory.addEventListener('change', bulkToggleInputs); // Fix (category)
-  /* Fix (settings task): bulk Category auto-capitalizes its first letter too */
-  el.bulkInpCategory.addEventListener('input', function(){ autoCapitalizeFirst(el.bulkInpCategory); });
+  /* Fix (category dropdown): bulk Category is a <select> too (its options are refreshed in
+     bulkResetFields); auto-capitalize now lives on the "new category" modal input. */
+  setupCategorySelect(el.bulkInpCategory);
   [el.bulkInpName, el.bulkInpLoc, el.bulkInpAmount, el.bulkInpCategory].forEach(function(inp){
     inp.addEventListener('keydown', function(ev){
       if (ev.key === 'Enter' && !ev.isComposing){
         ev.preventDefault();
+        if (catModalIsOpen()) return; // the "new category" modal owns Enter while it is open
         el.bulkContinue.click(); // Enter in a bulk field submits step 1 (mirrors the depot modal)
       }
     });
@@ -3723,6 +3963,35 @@ function bindEvents(){
       if (ev.target === ov){ ov.classList.add('hidden'); bulkPlan = null; bulkFocusAfterClose(); }
     });
     ov.addEventListener('keydown', bulkTabTrap); // a11y: Tab focus trap per visible overlay
+  });
+  /* Fix (new category modal): open/save/cancel, Tab trap, backdrop click, live Save state */
+  el.catModalSave.addEventListener('click', saveCategoryModal);
+  el.catModalCancel.addEventListener('click', cancelCategoryModal);
+  el.catOverlay.addEventListener('click', function(ev){
+    if (ev.target === el.catOverlay) cancelCategoryModal(); // backdrop click = cancel
+  });
+  el.catOverlay.addEventListener('keydown', function(ev){
+    if (ev.key !== 'Tab') return;
+    /* Disabled controls (the Save button before a name is typed) stay out of the trap. */
+    var f = el.catOverlay.querySelectorAll('button:not([disabled]):not(.hidden),input:not([disabled]):not(.hidden)');
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (ev.shiftKey){
+      if (document.activeElement === first || document.activeElement === el.catOverlay){ ev.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last){ ev.preventDefault(); first.focus(); }
+    }
+  });
+  el.catModalInput.addEventListener('input', function(){
+    autoCapitalizeFirst(el.catModalInput); // same first-letter rule as Name/Location/Category
+    setInvalid(el.catModalInput, false);
+    el.catModalSave.disabled = el.catModalInput.value.trim() === ''; // Save needs a non-empty name
+  });
+  el.catModalInput.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && !ev.isComposing){
+      ev.preventDefault();
+      saveCategoryModal(); // Enter confirms, like the other input modals
+    }
   });
   /* Fix (settings): the gear opens the settings dialog; controls apply live */
   el.btnSettings.addEventListener('click', openSettings);
@@ -3776,7 +4045,11 @@ function bindEvents(){
   });
   document.addEventListener('keydown', function(ev){
     if (ev.key === 'Escape'){
-      if (!el.iconPickerOverlay.classList.contains('hidden')){
+      if (!el.catOverlay.classList.contains('hidden')){
+        /* Fix (new category modal): it is the topmost surface, so it closes first —
+           the Category value is left untouched and focus returns to the dropdown. */
+        cancelCategoryModal();
+      } else if (!el.iconPickerOverlay.classList.contains('hidden')){
         closeIconPicker(); // Fix (depot icon picker): Escape closes, focus returns to the icon button
       } else if (bulkIsOpen()){
         // Fix (bulk edit): Escape closes whichever bulk step is visible (whole flow)

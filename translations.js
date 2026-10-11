@@ -57,6 +57,17 @@ window.DEPOT_LANGUAGES = [
          is the sortable stock-list column header. */
       category: "Category",
       colCategory: "Category",
+      /* Fix (category dropdown): the Category field is a dropdown; its first option opens
+         an inline "new category" editor instead of a modal. */
+      categoryDropdownAddNew: "Add new category",
+      categoryInlineHint: "Type a new category and press Enter.",
+      confirmNewCategory: "Confirm new category",
+      cancelNewCategory: "Cancel new category",
+      categorySetAnnouncement: "Category '{name}' set.",
+      categoryInlineEnterAnnouncement: "Enter new category.",
+      /* Fix (new category modal): the "Add new category" flow is a modal now. */
+      catModalTitle: "\u270f\ufe0f New category",
+      catModalHint: "Type a new category name.",
       emptyList: "No records yet in “{depotName}”. Add your first record using “Add/Import Product”.",
       defaultDepotName: "Depot-1",
       noResults: "No results for “{query}”.",
@@ -80,6 +91,7 @@ window.DEPOT_LANGUAGES = [
       imported: "✅ Imported: {n} new record(s) added.",
       exported: "✅ Export file downloaded.",
       csvBadHeader: "❌ CSV header row must contain “Name” and “Location” columns.",
+      csvBadHeaderOrder: "Invalid CSV header. Expected: Name, Location, Category, Amount.",
       impSumTitle: "📋 Import summary",
       impSumValid: "Rows to import: {n}",
       impSumDup: "Duplicate rows skipped: {n}",
@@ -132,14 +144,14 @@ window.DEPOT_LANGUAGES = [
       ksQuestionDesc: "Open this cheat sheet",
       ksTypeDesc: "Filter the list",
       ksEnterNameDesc: "Move to Location",
-      ksEnterLocDesc: "Move to Amount",
+      ksEnterLocDesc: "Move to Category", // Fix (field order): Location -> Category
       keyEnterAmount: "Enter (in Amount)",
-      ksEnterAmountDesc: "Move to Category", // Fix (category): Enter in Amount now jumps to Category
+      ksEnterAmountDesc: "Add the product", // Fix (field order): Amount is now last -> submits
       keyEnterCategory: "Enter (in Category)",
-      ksEnterCatDesc: "Add the product",
-      ksEditEnterLocDesc: "Move to Amount",
-      ksEditEnterAmountDesc: "Move to Category", // Fix (category): inline edit jumps Amount -> Category
-      ksEditEnterCatDesc: "Save changes",
+      ksEnterCatDesc: "Move to Amount", // Fix (field order): Category -> Amount
+      ksEditEnterLocDesc: "Move to Category", // Fix (field order)
+      ksEditEnterAmountDesc: "Save changes", // Fix (field order): Amount is now last -> saves
+      ksEditEnterCatDesc: "Move to Amount", // Fix (field order)
       ksEditEscDesc: "Cancel editing",
       ksDepotOpenDesc: "Open the depot list",
       ksDepotArrowsDesc: "Move through depots",
@@ -148,8 +160,8 @@ window.DEPOT_LANGUAGES = [
       ksModalTabDesc: "Move between buttons",
       ksModalEnterDesc: "Confirm the focused button",
       ksModalEscDesc: "Close the modal",
-      hintInlineEdit: "Enter: Name → Location → Amount → Category → Save · Esc to cancel",
-      hintAddJump: "Tip: Enter moves Name → Location → Amount → Category; Enter in Category adds the product.",
+      hintInlineEdit: "Enter: Name → Location → Category → Amount → Save · Esc to cancel",
+      hintAddJump: "Tip: Enter moves Name → Location → Category → Amount; Enter in Amount adds the product.",
       keyTabShift: "Tab / Shift+Tab",
       keyEnterSpace: "Enter / Space",
       keyEsc: "Esc",
@@ -323,6 +335,17 @@ window.DEPOT_LANGUAGES = [
          stok listesi sütun başlığıdır. */
       category: "Kategori",
       colCategory: "Kategori",
+      /* Fix (category dropdown): Kategori alanı bir açılır listedir; ilk seçenek modal
+         yerine satır içi "yeni kategori" düzenleyicisini açar. */
+      categoryDropdownAddNew: "Yeni kategori ekle",
+      categoryInlineHint: "Yeni kategori yazın ve Enter'a basın.",
+      confirmNewCategory: "Yeni kategoriyi onayla",
+      cancelNewCategory: "Yeni kategoriyi iptal et",
+      categorySetAnnouncement: "'{name}' kategorisi ayarlandı.",
+      categoryInlineEnterAnnouncement: "Yeni kategori girin.",
+      /* Fix (new category modal): "Yeni kategori ekle" akışı artık bir modal. */
+      catModalTitle: "\u270f\ufe0f Yeni kategori",
+      catModalHint: "Yeni kategori adı yazın.",
       emptyList: "“{depotName}” içinde henüz kayıt yok. “Ürün Ekle/İçe Aktar” ile ilk kaydınızı ekleyin.",
       defaultDepotName: "Depo-1",
       noResults: "“{query}” için sonuç bulunamadı.",
@@ -346,6 +369,7 @@ window.DEPOT_LANGUAGES = [
       imported: "✅ İçe aktarıldı: {n} yeni kayıt eklendi.",
       exported: "✅ CSV dosyası indirildi.",
       csvBadHeader: "❌ CSV başlık satırında “Name” ve “Location” sütunları bulunmalıdır.",
+      csvBadHeaderOrder: "Geçersiz CSV başlığı. Beklenen: Ad, Konum, Kategori, Adet.",
       impSumTitle: "📋 İçe aktarma özeti",
       impSumValid: "İçe aktarılacak satır: {n}",
       impSumDup: "Yinelenen satır (atlanacak): {n}",
@@ -398,14 +422,14 @@ window.DEPOT_LANGUAGES = [
       ksQuestionDesc: "Bu kısayol kılavuzunu açın",
       ksTypeDesc: "Listeyi filtreleyin",
       ksEnterNameDesc: "Konum alanına geçin",
-      ksEnterLocDesc: "Adet alanına geçin",
+      ksEnterLocDesc: "Kategori alanına geçin", // Fix (field order)
       keyEnterAmount: "Enter (Adet alanında)",
-      ksEnterAmountDesc: "Kategori alanına geçin", // Fix (category)
+      ksEnterAmountDesc: "Ürünü ekleyin", // Fix (field order)
       keyEnterCategory: "Enter (Kategori'de)",
-      ksEnterCatDesc: "Ürünü ekleyin",
-      ksEditEnterLocDesc: "Adet alanına geçin",
-      ksEditEnterAmountDesc: "Kategori alanına geçin", // Fix (category)
-      ksEditEnterCatDesc: "Değişiklikleri kaydet",
+      ksEnterCatDesc: "Adet alanına geçin", // Fix (field order)
+      ksEditEnterLocDesc: "Kategori alanına geçin", // Fix (field order)
+      ksEditEnterAmountDesc: "Değişiklikleri kaydet", // Fix (field order)
+      ksEditEnterCatDesc: "Adet alanına geçin", // Fix (field order)
       ksEditEscDesc: "Düzenlemeyi iptal edin",
       ksDepotOpenDesc: "Depo listesini açın",
       ksDepotArrowsDesc: "Depolar arasında gezinin",
@@ -414,8 +438,8 @@ window.DEPOT_LANGUAGES = [
       ksModalTabDesc: "Düğmeler arasında gezinin",
       ksModalEnterDesc: "Odaklanılan düğmeyi onaylayın",
       ksModalEscDesc: "Modalı kapatın",
-      hintInlineEdit: "Enter: Ürün Adı → Konum → Adet → Kategori → Kaydet · İptal için Esc.",
-      hintAddJump: "İpucu: Enter, Ürün Adı → Konum → Adet → Kategori arasında geçer; Kategori alanında Enter ürünü ekler.",
+      hintInlineEdit: "Enter: Ürün Adı → Konum → Kategori → Adet → Kaydet · İptal için Esc.",
+      hintAddJump: "İpucu: Enter, Ürün Adı → Konum → Kategori → Adet arasında geçer; Adet alanında Enter ürünü ekler.",
       keyTabShift: "Tab / Shift+Tab",
       keyEnterSpace: "Enter / Boşluk",
       keyEsc: "Esc",
