@@ -1,0 +1,47 @@
+/* ---------- Header ---------- */
+header{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap}
+h1{font-size:1.35rem;display:flex;align-items:center;gap:.5rem}
+
+/* ---------- Search wrap & clear button ---------- */
+.search-wrap{position:relative;display:flex;align-items:center}
+.search-wrap .search-input{width:100%;padding-right:2.6rem}
+.clear-btn{
+  position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;min-height:0;padding:0;
+  border:none;border-radius:6px;background:none;
+  font-size:1.15rem;line-height:1;color:var(--muted);cursor:pointer;
+}
+.clear-btn:hover{color:var(--text);background:var(--bg)}
+
+/* ---------- Cards & form ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow)}
+.card h2{font-size:1rem;margin-bottom:.75rem}
+form#productForm{display:grid;gap:.75rem;grid-template-columns:1fr}
+.field label{display:block;font-size:.8rem;font-weight:600;margin-bottom:.25rem;color:var(--muted)}
+input[type="text"],input[type="search"],input[type="number"]{
+  width:100%;padding:.65rem .75rem;font-size:1rem;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);
+}
+input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.err{font-size:.82rem;color:var(--danger);margin-top:.3rem;min-height:1.2em;line-height:1.2} /* Fix (Phase 5): reserved line + fixed line-height (emoji glyphs otherwise inflate the box) — errors no longer shift the form layout */
+.search-input{margin-bottom:.25rem}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
+  padding:.6rem 1.05rem;font-size:.95rem;font-weight:600;
+  border:none;border-radius:8px;cursor:pointer;min-height:44px;
+  font-family:inherit;
+}
+/* Fix (Phase 3 contrast): white label on --accent-solid = 5.76:1 light / 5.05:1 dark (AA) */
+.btn-primary{background:var(--accent-solid);color:#fff}
+.btn-primary:hover{background:var(--accent-solid-hover)}
+.btn-secondary{background:transparent;color:var(--accent);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent)}
+/* Fix (Phase 3 contrast): white label on --danger-solid = 5.44:1 light / 6.04:1 dark (was 3.66:1 dark) */
+.btn-danger{background:var(--danger-solid);color:#fff}
+.form-actions{display:flex;flex-direction:row;gap:.5rem;align-items:end}
+.hidden{display:none!important}
+/* Fix: removed duplicate .sr-only one-liner; the canonical block below is identical (audit #9) */
+

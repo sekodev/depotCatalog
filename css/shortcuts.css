@@ -1,0 +1,54 @@
+/* ---------- Keyboard shortcuts ("?") button & cheat sheet modal ---------- */
+.ks-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;
+  font-size:calc(.85rem * var(--app-icon-scale));font-weight:700;font-family:inherit;
+}
+.ks-btn:hover{color:var(--text);background:var(--bg)}
+.ks-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ks-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:120;
+  display:flex;align-items:center;justify-content:center;padding:1rem;
+}
+.ks-modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+  max-width:480px;width:100%;max-height:80vh;
+  display:flex;flex-direction:column;padding:1.25rem;
+}
+.ks-modal h2{font-size:1.05rem;margin-bottom:.75rem}
+.ks-body{overflow-y:auto;flex:1;font-size:.87rem}
+.ks-section{margin-bottom:.9rem}
+.ks-section:last-child{margin-bottom:0}
+.ks-section h3{font-size:.85rem;font-weight:700;color:var(--accent);margin:0 0 .35rem}
+.ks-rows{margin:0;padding:0;list-style:none}
+.ks-rows li{display:flex;gap:.5rem;padding:.15rem 0;align-items:baseline}
+.ks-key{
+  flex:none;min-width:7rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.8rem;background:var(--bg);border:1px solid var(--border);
+  border-radius:4px;padding:.1rem .35rem;text-align:center;color:var(--text);
+}
+.ks-desc{color:var(--muted)}
+.hint-inline{font-size:.8rem;color:var(--muted)}
+/* Fix (Location alignment): the hint is a normal block below the input. It was
+   position:absolute, which (a) overlapped the next field on mobile when visible and
+   (b) left the Location field shorter than Name/Amount (which reserve an error line),
+   so the desktop row (align-items:end) dropped the Location input ~1.28rem lower. */
+#hintAddJump{margin-top:.3rem;line-height:1.2}
+
+/* Fix (settings): inline icon glyphs (pagination arrows, toolbar arrows) follow the icon scale */
+.ico{display:inline-block;font-size:calc(1em * var(--app-icon-scale));line-height:1}
+/* Fix (settings): settings modal. z-index below .overlay (50) so the shared reset
+   confirmation modal always renders ON TOP of the settings dialog. */
+.settings-overlay{z-index:45}
+.settings-modal{max-height:85vh;overflow-y:auto}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.85rem}
+.settings-row label{font-size:.9rem;color:var(--text)}
+.settings-row select{
+  font-family:inherit;font-size:.9rem;padding:.4rem .55rem;min-height:40px;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text);
+}
+.settings-row select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+

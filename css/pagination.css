@@ -1,0 +1,17 @@
+/* ---------- Pagination ---------- */
+.pagination{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:.35rem;padding:.65rem;border-top:1px solid var(--border);
+}
+.page-btn{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  min-width:44px;min-height:44px;padding:0 .7rem;font-size:.9rem;
+  color:var(--text);cursor:pointer;font-family:inherit;
+}
+.page-btn:hover:not([disabled]):not(.active){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent-solid);border-color:var(--accent-solid);color:#fff;font-weight:700} /* Fix (Phase 3): 5.05:1 dark */
+.page-btn[disabled]{opacity:.45;cursor:default}
+.page-ellipsis{color:var(--muted);padding:0 .25rem}
+
+
+
