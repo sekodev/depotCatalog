@@ -15,6 +15,9 @@
   --danger:#c0392b;
   --danger-solid:#c0392b;
   --danger-bg:#fdecea;
+  /* Fix (clear actions): amber warning token for the persistent "Changes not saved."
+     indicator. #8a5a00 on the white surface = 5.9:1 (WCAG AA). */
+  --warn:#8a5a00;
   --radius:10px;
   --shadow:0 1px 3px rgba(16,24,40,.08);
   /* Fix (settings): user-adjustable scales (set on <html> pre-paint + by the settings modal).
@@ -39,6 +42,8 @@
   --accent-solid-hover:#27629f;
   --danger-solid:#b33629;
   --danger-bg:#3a2320;
+  /* Fix (clear actions): amber on the dark surface #1b222b = 7.4:1 (WCAG AA). */
+  --warn:#e8a33d;
   --shadow:0 1px 3px rgba(0,0,0,.4);
 }
 @media (prefers-color-scheme: dark){
@@ -56,6 +61,8 @@
     --accent-solid-hover:#27629f;
     --danger-solid:#b33629;
     --danger-bg:#3a2320;
+    /* Fix (clear actions): mirror of the data-theme block — see comment there. */
+    --warn:#e8a33d;
     --shadow:0 1px 3px rgba(0,0,0,.4);
   }
 }

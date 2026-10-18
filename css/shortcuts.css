@@ -51,4 +51,8 @@
   background:var(--surface);color:var(--text);
 }
 .settings-row select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Fix (clear actions): the two maintenance buttons span the dialog width, and a subtle
+   divider between them keeps the two different blast radii visually distinct. */
+.settings-row > .btn{width:100%}
+.settings-sep{border-top:1px solid var(--border);margin:0 0 .85rem}
 

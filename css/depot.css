@@ -117,6 +117,10 @@
   opacity:1;pointer-events:auto;visibility:visible;
   transition:opacity .25s ease;
 }
+/* Fix (clear actions): persistent "Changes not saved." state. Amber text + border so it is
+   clearly distinguishable from the normal muted "Saving…/Saved." pill, in both themes.
+   No fade-out: the element keeps .show until the next real save removes the modifier. */
+.save-indicator--unsaved{color:var(--warn);border-color:var(--warn)}
 @media (prefers-reduced-motion: reduce){
   .save-indicator{transition:none}
   .save-indicator.show{transition:none}

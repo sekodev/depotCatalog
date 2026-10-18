@@ -30,7 +30,8 @@ function askConfirm(opts){
     list: opts.list,
     okLabel: opts.okLabel,
     danger: opts.danger,
-    alertOnly: opts.alertOnly
+    alertOnly: opts.alertOnly,
+    focusCancel: opts.focusCancel // Fix (clear actions): destructive confirmations focus Cancel first
   }).then(function(v){ return v === true; });
 }
 /* Input modal: resolves the trimmed input value on Save, null on cancel. */
@@ -85,6 +86,10 @@ function openModal(opts){
   if (modalInputMode){
     el.modalInput.focus();
     try { el.modalInput.select(); } catch(e){}
+  } else if (opts.focusCancel && !opts.alertOnly){
+    /* Fix (clear actions): opt-in — destructive confirmations put focus on Cancel, never
+       on the destructive button. Existing callers keep focusing OK (unchanged). */
+    el.modalCancel.focus();
   } else {
     el.modalOk.focus();
   }

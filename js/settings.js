@@ -6,17 +6,26 @@ DC.settings = DC.settings || {};
 
 /* Aliases to already-loaded modules (read once, at load time). */
 var LANGUAGES = DC.i18n.LANGUAGES;
+var LS_DATA = DC.const.LS_DATA;     // Fix (clear actions)
 var LS_FONT = DC.const.LS_FONT;
 var LS_ICON = DC.const.LS_ICON;
 var LS_LANG = DC.const.LS_LANG;
+var LS_LEGACY = DC.const.LS_LEGACY; // Fix (clear actions)
 var announce = DC.announce.announce;
+var applyFavicon = DC.favicon.applyFavicon;       // Fix (clear actions)
 var askConfirm = DC.modal.askConfirm;
+var clearSnapshots = DC.backup.clearSnapshots;    // Fix (clear actions)
 var detectLangFromDevice = DC.i18n.detectLangFromDevice;
 var el = DC.el;
 var getLang = DC.i18n.getLang;
+var hideImportReport = DC.csv.hideImportReport;   // Fix (clear actions)
+var persist = DC.store.persist;                   // Fix (clear actions)
 var render = DC.list.render;
 var setLang = DC.i18n.setLang;
+var showToast = DC.modal.showToast;               // Fix (clear actions): visible success feedback
+var showUnsavedIndicator = DC.store.showUnsavedIndicator; // Fix (clear actions)
 var state = DC.state;
+var syncItemsRef = DC.state.syncItemsRef;         // Fix (clear actions)
 var t = DC.i18n.t;
 
 /* ================= Settings (Fix: settings gear) ================= */
@@ -43,6 +52,9 @@ function applySettingsText(){
   el.lblSetFont.textContent = t('fontSizeLabel');
   el.lblSetIcon.textContent = t('iconSizeLabel');
   el.btnResetSettings.textContent = t('resetToDefaults');
+  /* Fix (clear actions): maintenance buttons */
+  el.btnClearBackup.textContent = t('clearBackupHistoryButton');
+  el.btnClearAll.textContent = t('clearAllDataButton');
   el.setClose.textContent = t('close');
   el.btnSettings.setAttribute('aria-label', t('settingsButton'));
   el.btnSettings.title = t('settingsButton');
@@ -122,17 +134,115 @@ function onResetSettings(){
     danger: true
   }).then(function(ok){
     if (!ok) return;
+    /* Fix (reset toast): track whether the preference writes succeeded, so a storage
+       failure can never produce a false success message. */
+    var stored = true;
     state.lang = detectLangFromDevice(); // re-detect (ignores the saved preference)
-    try { localStorage.removeItem(LS_LANG); } catch(e){}
+    try { localStorage.removeItem(LS_LANG); } catch(e){ stored = false; }
     state.fontScale = 'normal';
     state.iconScale = 'normal';
     applyFontScale('normal');
     applyIconScale('normal');
-    try { localStorage.setItem(LS_FONT, 'normal'); } catch(e){}
-    try { localStorage.setItem(LS_ICON, 'normal'); } catch(e){}
+    try { localStorage.setItem(LS_FONT, 'normal'); } catch(e){ stored = false; }
+    try { localStorage.setItem(LS_ICON, 'normal'); } catch(e){ stored = false; }
     render(); // re-render every string in the reset language
     if (!el.settingsOverlay.classList.contains('hidden')) applySettingsText();
+    /* Fix (reset toast): feedback identical to the two clear actions —
+       (3) polite live-region announcement (screen readers),
+       (4) visible success toast (sighted users; the toast is aria-hidden, so no double
+       announcement). On a storage error, fall back to the app's existing storage-error
+       path instead of claiming success. */
+    if (!stored){
+      showToast(t('storageWarn'), 'warn');
+      announce(t('storageWarn'), true);
+      return;
+    }
     announce(t('settingsResetAnnouncement'));
+    showToast(t('settingsResetAnnouncement'), 'success');
+  });
+}
+/* Fix (clear actions): the live region only speaks the LAST text set within a tick, so the
+   action result and the indicator's own "Changes not saved." announcement are staggered —
+   result first, then the indicator state. The indicator is set in the second phase so its
+   announcement is actually heard (the same phase convention the save indicator already
+   uses for Saving…/Saved.). */
+function announceClearResult(resultKey){
+  /* Fix (clear actions): per-action feedback order —
+     (3) polite live-region announcement (screen readers),
+     (4) visible success toast (sighted users; aria-hidden, so no double announcement),
+     (5) the persistent "Changes not saved." indicator + its own announcement. */
+  announce(t(resultKey));
+  showToast(t(resultKey), 'success');
+  setTimeout(function(){ showUnsavedIndicator(); }, 700);
+}
+/* Fix (clear actions): Settings > Clear backup history.
+   Removes the rolling snapshot window ONLY — catalog data, depot icons and every
+   preference are untouched. Deliberately does NOT call persist() (nothing about the main
+   data changed) and does NOT call snapshotCurrentData() (that would immediately recreate
+   the very snapshot this action exists to remove). The save indicator switches to the
+   persistent "Changes not saved." state instead. Focus returns to the triggering button
+   automatically (askConfirm restores it); the Settings dialog stays open. */
+function onClearBackupHistory(){
+  askConfirm({
+    title: t('clearBackupHistoryTitle'),
+    message: t('clearBackupHistoryBody'),
+    okLabel: t('clearBackupHistoryConfirm'),
+    danger: true,
+    focusCancel: true // focus Cancel, never the destructive button
+  }).then(function(ok){
+    if (!ok) return;
+    /* Fix (clear actions): on a storage error fall back to the app's existing storage-error
+       path (warn toast + assertive announcement) instead of claiming success. */
+    if (!clearSnapshots()){
+      showToast(t('storageWarn'), 'warn');
+      announce(t('storageWarn'), true);
+      return;
+    }
+    announceClearResult('clearBackupHistoryAnnouncement');
+  });
+}
+/* Fix (clear actions): Settings > Clear all data.
+   Wipes catalog data, depot icons and all snapshots; keeps language/theme/font/icon
+   preferences. The cleared state IS persisted — persist() writes the fresh default depot
+   to LS_DATA — so a reload cannot restore the old data. Only the *snapshot* is skipped. */
+function onClearAllData(){
+  askConfirm({
+    title: t('clearAllDataTitle'),
+    message: t('clearAllDataBody'),
+    okLabel: t('clearAllDataConfirm'),
+    danger: true,
+    focusCancel: true
+  }).then(function(ok){
+    if (!ok) return;
+    try { localStorage.removeItem(LS_DATA); } catch(e){}
+    try { localStorage.removeItem(LS_LEGACY); } catch(e){}
+    clearSnapshots(); // no snapshot is written by this path
+    /* fresh-install in-memory state (mirrors init()'s fresh-start block) */
+    state.depots = [{ id: 1, name: t('defaultDepotName'), items: [] }];
+    state.activeDepotId = 1;
+    state.nextDepotId = 2;
+    state.nextItemId = 1;
+    state.depotIcons = {};
+    syncItemsRef();
+    /* transient view state -> fresh-load values */
+    state.filter = '';
+    state.sort = { key: null, dir: null };
+    state.selectedIds = {};
+    state.editingId = null;
+    state.page = 1;
+    state.pageSize = 5;
+    el.inpSearch.value = '';
+    el.btnClearSearch.classList.add('hidden');
+    el.formCard.classList.add('hidden');
+    el.btnToggleAdd.classList.remove('invisible');
+    hideImportReport();
+    var saved = persist(); // durable cleared state (writes LS_DATA — never a snapshot)
+    render();       // empty state + updated document title
+    applyFavicon(); // favicon back to the default (no custom depot icon)
+    /* Fix (clear actions): if persistence failed, persist() has already fired the existing
+       storage-error path — never show the success toast/announcement in that case. */
+    if (!saved) return;
+    announceClearResult('clearAllDataAnnouncement');
   });
 }
 
@@ -141,6 +251,8 @@ DC.settings.applyFontScale = applyFontScale;
 DC.settings.applyIconScale = applyIconScale;
 DC.settings.applySettingsText = applySettingsText;
 DC.settings.closeSettings = closeSettings;
+DC.settings.onClearAllData = onClearAllData;
+DC.settings.onClearBackupHistory = onClearBackupHistory;
 DC.settings.onResetSettings = onResetSettings;
 DC.settings.onSettingsFontChange = onSettingsFontChange;
 DC.settings.onSettingsIconChange = onSettingsIconChange;

@@ -50,6 +50,8 @@ var hideSuggestions = DC.input.hideSuggestions;
 var iconPickerKeydown = DC.icons.iconPickerKeydown;
 var languagesValid = DC.i18n.languagesValid;
 var loadState = DC.store.loadState;
+var onClearAllData = DC.settings.onClearAllData;             // Fix (clear actions)
+var onClearBackupHistory = DC.settings.onClearBackupHistory; // Fix (clear actions)
 var onResetSettings = DC.settings.onResetSettings;
 var onSettingsFontChange = DC.settings.onSettingsFontChange;
 var onSettingsIconChange = DC.settings.onSettingsIconChange;
@@ -300,6 +302,9 @@ function bindEvents(){
   el.setFont.addEventListener('change', onSettingsFontChange);
   el.setIcon.addEventListener('change', onSettingsIconChange);
   el.btnResetSettings.addEventListener('click', onResetSettings);
+  /* Fix (clear actions): maintenance actions in the settings dialog */
+  el.btnClearBackup.addEventListener('click', onClearBackupHistory);
+  el.btnClearAll.addEventListener('click', onClearAllData);
   el.btnExport.addEventListener('click', handleExport);
   el.btnImportTrigger.addEventListener('click', function(){
     try { el.inpImport.click(); } catch(e){}

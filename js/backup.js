@@ -83,8 +83,16 @@ function evictOldestSnapshot(){
   snaps.pop();
   return writeSnaps(snaps);
 }
+/* Fix (clear actions): drop the whole rolling window. Used by Settings > Clear backup
+   history / Clear all data. Removes the key entirely (so a fresh write starts a new
+   window) and never creates a snapshot itself. */
+function clearSnapshots(){
+  try { localStorage.removeItem(LS_SNAPS); return true; }
+  catch(e){ return false; }
+}
 
 /* Exports. */
+DC.backup.clearSnapshots = clearSnapshots;
 DC.backup.evictOldestSnapshot = evictOldestSnapshot;
 DC.backup.snapshotCurrentData = snapshotCurrentData;
 })();

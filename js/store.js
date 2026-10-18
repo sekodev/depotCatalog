@@ -173,6 +173,8 @@ function showSaveIndicator(){
   if (!DC.store.ok) return;
   clearTimeout(savePhase1Timer);
   clearTimeout(savePhase2Timer);
+  /* Fix (clear actions): a real save supersedes the persistent unsaved state */
+  el.saveIndicator.classList.remove('save-indicator--unsaved');
   el.saveIndicator.classList.add('show');
   el.saveIndText.textContent = t('saving');
   announce(t('saving'));
@@ -184,11 +186,25 @@ function showSaveIndicator(){
     }, 3000);
   }, 700);
 }
+/* Fix (clear actions): persistent "Changes not saved." state. Shown after an action
+   that intentionally leaves no snapshot behind (Clear backup history / Clear all data).
+   Deliberately does NOT fade out: it stays visible until the next real save runs
+   showSaveIndicator() above. The phase timers are cleared so a pending fade-out from a
+   previous save cannot hide it. */
+function showUnsavedIndicator(){
+  if (!DC.store.ok) return;
+  clearTimeout(savePhase1Timer);
+  clearTimeout(savePhase2Timer);
+  el.saveIndicator.classList.add('show', 'save-indicator--unsaved');
+  el.saveIndText.textContent = t('changesNotSaved');
+  announce(t('changesNotSaved'));
+}
 
 /* Exports. */
 DC.store.checkStorage = checkStorage;
 DC.store.loadState = loadState;
 DC.store.persist = persist;
 DC.store.showSaveIndicator = showSaveIndicator;
+DC.store.showUnsavedIndicator = showUnsavedIndicator;
 })();
 

@@ -33,6 +33,8 @@ var el = {};
  'btnDepotIcon','depotIconEmoji','iconPickerOverlay','iconPickerTitle','iconGrid','iconPickerSave','iconPickerCancel',
  /* Fix (settings): settings modal */
  'btnSettings','settingsOverlay','settingsTitle','setLang','lblSetLang','setFont','lblSetFont','setIcon','lblSetIcon','btnResetSettings','setClose',
+ /* Fix (clear actions): Settings > Clear backup history / Clear all data */
+ 'btnClearBackup','btnClearAll',
  /* Fix (new category modal) */
  'catOverlay','catModalTitle','catModalLbl','catModalInput','catModalHint','catModalCancel','catModalSave'
 ].forEach(function(id){ el[id] = $(id); });
