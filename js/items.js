@@ -105,7 +105,7 @@ async function handleFormSubmit(ev){
     }
     var newId = state.nextItemId++;
     state.items.push({ id: newId, name: name, location: location, amount: amountRes.value, category: category }); // Fix (category): category stored (empty string when blank)
-    persist(); snapshotCurrentData();
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     // Show the page that contains the newly added item
     var fl = getFilteredItems();
     for (var k = 0; k < fl.length; k++){
@@ -137,7 +137,7 @@ function handleDelete(id){
       }
     }
     if (state.editingId === id) resetForm();
-    persist(); snapshotCurrentData();
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     render();
     showSaveIndicator();
     showToast(t('deleted'), 'success');

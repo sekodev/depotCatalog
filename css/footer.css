@@ -15,28 +15,31 @@
 .gh-link:hover{color:var(--text);background:var(--bg)}
 .gh-link svg{width:22px;height:22px;fill:currentColor}
 
-/* ---------- Theme switch ---------- */
-.theme-switch{
+/* ---------- Switch (shared by the header theme toggle and the Auto-save toggle) ----------
+   Fix (auto-save switch): `.switch` is the shared class, so both toggles are styled by these
+   exact declarations (no duplicated rules). `.theme-switch` is kept for the header control,
+   whose markup and behaviour are unchanged. */
+.theme-switch, .switch{
   position:relative;width:48px;height:26px;border-radius:999px;
   border:1px solid var(--border);background:var(--bg);cursor:pointer;
   transition:background .2s ease;flex:none;
 }
-.theme-switch::after{
+.theme-switch::after, .switch::after{
   content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;
   border-radius:50%;background:var(--surface);border:1px solid var(--border);
   box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s ease;
 }
-.theme-switch[aria-checked="true"]{background:var(--accent-solid)} /* Fix (Phase 3): white knob 5.05:1 dark */
-.theme-switch[aria-checked="true"]::after{left:24px;background:#fff}
-.theme-switch:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.theme-switch .sw-icon{
+.theme-switch[aria-checked="true"], .switch[aria-checked="true"]{background:var(--accent-solid)} /* Fix (Phase 3): white knob 5.05:1 dark */
+.theme-switch[aria-checked="true"]::after, .switch[aria-checked="true"]::after{left:24px;background:#fff}
+.theme-switch:focus-visible, .switch:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.theme-switch .sw-icon, .switch .sw-icon{
   position:absolute;top:50%;transform:translateY(-50%);
   font-size:calc(.72rem * var(--app-icon-scale));line-height:1;pointer-events:none;
 }
-/* Only the icon for the ACTIVE theme is visible:
-   light -> sun (right, opposite the knob), dark -> moon (left) */
-.theme-switch .sw-sun{right:6px}
-.theme-switch .sw-moon{left:6px;display:none}
-.theme-switch[aria-checked="true"] .sw-sun{display:none}
-.theme-switch[aria-checked="true"] .sw-moon{display:block}
+/* Only the icon for the ACTIVE state is visible: the right-hand slot when unchecked,
+   the left-hand slot when checked (opposite the knob). */
+.theme-switch .sw-sun, .switch .sw-sun{right:6px}
+.theme-switch .sw-moon, .switch .sw-moon{left:6px;display:none}
+.theme-switch[aria-checked="true"] .sw-sun, .switch[aria-checked="true"] .sw-sun{display:none}
+.theme-switch[aria-checked="true"] .sw-moon, .switch[aria-checked="true"] .sw-moon{display:block}
 

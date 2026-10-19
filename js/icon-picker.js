@@ -103,8 +103,7 @@ function savePendingIcon(){
     } else {
       state.depotIcons[id] = emoji;
     }
-    persist();
-    snapshotCurrentData(); // auto-backup snapshot
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     syncDepotIconUI();     // title icon button updates
     applyFavicon();        // dynamic favicon updates
     showSaveIndicator();

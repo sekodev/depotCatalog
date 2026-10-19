@@ -18,10 +18,14 @@ var clearSnapshots = DC.backup.clearSnapshots;    // Fix (clear actions)
 var detectLangFromDevice = DC.i18n.detectLangFromDevice;
 var el = DC.el;
 var getLang = DC.i18n.getLang;
+var hasUnsavedChanges = DC.store.hasUnsavedChanges; // Fix (auto-save)
 var hideImportReport = DC.csv.hideImportReport;   // Fix (clear actions)
 var persist = DC.store.persist;                   // Fix (clear actions)
 var render = DC.list.render;
+var saveNow = DC.store.saveNow;                   // Fix (auto-save)
+var setAutoSave = DC.store.setAutoSave;           // Fix (auto-save)
 var setLang = DC.i18n.setLang;
+var showSavedIndicator = DC.store.showSavedIndicator; // Fix (auto-save)
 var showToast = DC.modal.showToast;               // Fix (clear actions): visible success feedback
 var showUnsavedIndicator = DC.store.showUnsavedIndicator; // Fix (clear actions)
 var state = DC.state;
@@ -43,6 +47,14 @@ function applyIconScale(v){
   var k = SCALE_VALUES[v] ? v : 'normal';
   document.documentElement.style.setProperty('--app-icon-scale', String(SCALE_VALUES[k]));
 }
+/* Fix (auto-save switch): the Auto-save control is a <button role="switch">, so its state
+   must be driven explicitly from the internal flag — never from browser form-state
+   restoration (which is exactly why the old checkbox could disagree with the flag after a
+   reload). Sets aria-checked, which is also what drives the shared `.switch` visuals. */
+function syncAutoSaveToggle(){
+  if (!el.setAutoSave) return;
+  el.setAutoSave.setAttribute('aria-checked', String(!!DC.store.autoSave));
+}
 /* Refresh the settings dialog labels/options. Called from applyStaticText on every
    render, so a language switch re-localizes the dialog while it is open. */
 function applySettingsText(){
@@ -52,6 +64,9 @@ function applySettingsText(){
   el.lblSetFont.textContent = t('fontSizeLabel');
   el.lblSetIcon.textContent = t('iconSizeLabel');
   el.btnResetSettings.textContent = t('resetToDefaults');
+  el.lblSetAutoSave.textContent = t('autoSaveLabel'); // Fix (auto-save)
+  syncAutoSaveToggle(); // Fix (auto-save switch): keeps the switch in sync on every render,
+                        // which also covers app init (init -> render -> applyStaticText)
   /* Fix (clear actions): maintenance buttons */
   el.btnClearBackup.textContent = t('clearBackupHistoryButton');
   el.btnClearAll.textContent = t('clearAllDataButton');
@@ -145,6 +160,19 @@ function onResetSettings(){
     applyIconScale('normal');
     try { localStorage.setItem(LS_FONT, 'normal'); } catch(e){ stored = false; }
     try { localStorage.setItem(LS_ICON, 'normal'); } catch(e){ stored = false; }
+    /* Fix (auto-save persistence): "reset to defaults" means everything back to factory
+       defaults, so auto-save returns to ON. setAutoSave() writes '1' to LS_AUTOSAVE and
+       re-syncs the switch. Its own write failure is silent by design (store.js), so it
+       deliberately does not feed `stored` below. */
+    setAutoSave(true);
+    /* Fix (reset + auto-save): mirror the toggle-ON safety path exactly (see
+       onAutoSaveToggle). Flipping auto-save ON while in-memory changes are still pending
+       would otherwise disarm beforeunload with those changes unsaved, silently removing
+       the tab-close prompt. Flush them first: saveNow() persists + snapshots and clears
+       the unsaved flag, so beforeunload ends up disarmed because nothing is left unsaved.
+       A failed flush needs no new error path — persist() already fires the existing
+       storage-error path and leaves the unsaved flag set. */
+    if (hasUnsavedChanges()){ saveNow(); showSavedIndicator(); }
     render(); // re-render every string in the reset language
     if (!el.settingsOverlay.classList.contains('hidden')) applySettingsText();
     /* Fix (reset toast): feedback identical to the two clear actions —
@@ -242,8 +270,44 @@ function onClearAllData(){
     /* Fix (clear actions): if persistence failed, persist() has already fired the existing
        storage-error path — never show the success toast/announcement in that case. */
     if (!saved) return;
+    DC.store.markSaved(); // Fix (auto-save): the written state now matches memory
     announceClearResult('clearAllDataAnnouncement');
   });
+}
+
+/* Fix (auto-save): Settings > Auto-save switch. Turning it OFF asks for confirmation first
+   (the switch stays ON until then); turning it back ON saves any pending in-memory changes
+   immediately. Fix (auto-save persistence): the flag is now persisted, so the choice
+   survives a reload. The control is a button, so its state is
+   read from the flag and its visual state is re-synced rather than toggled via `.checked`. */
+function onAutoSaveToggle(){
+  if (!DC.store.autoSave){
+    /* currently OFF -> switching ON: no warning, flush pending changes */
+    setAutoSave(true); // also re-syncs the switch (store.js)
+    if (hasUnsavedChanges()){ saveNow(); showSavedIndicator(); }
+    announce(t('autoSaveEnabledAnnouncement'));
+    return;
+  }
+  /* currently ON -> switching OFF: warn about the consequence */
+  askConfirm({
+    title: t('autoSaveTurnOffTitle'),
+    message: t('autoSaveTurnOffBody'),
+    okLabel: t('autoSaveTurnOffConfirm'),
+    danger: true,
+    focusCancel: true // focus Cancel, never the destructive confirm
+  }).then(function(ok){
+    if (!ok){ syncAutoSaveToggle(); el.setAutoSave.focus(); return; } // stays ON
+    setAutoSave(false); // also re-syncs the switch (store.js)
+    announce(t('autoSaveDisabledAnnouncement'));
+    el.setAutoSave.focus(); // focus returns to the switch
+  });
+}
+/* Fix (auto-save): manual save from the button beside the save indicator. Shows the
+   explicit "Saved." flash because auto-save may still be OFF (showSaveIndicator() would
+   route back to the persistent unsaved state in that case). */
+function onSaveNow(){
+  if (!saveNow()) return; // storage failure: persist() already fired the error path
+  showSavedIndicator();
 }
 
 /* Exports. */
@@ -251,14 +315,17 @@ DC.settings.applyFontScale = applyFontScale;
 DC.settings.applyIconScale = applyIconScale;
 DC.settings.applySettingsText = applySettingsText;
 DC.settings.closeSettings = closeSettings;
+DC.settings.onAutoSaveToggle = onAutoSaveToggle;
 DC.settings.onClearAllData = onClearAllData;
 DC.settings.onClearBackupHistory = onClearBackupHistory;
 DC.settings.onResetSettings = onResetSettings;
+DC.settings.onSaveNow = onSaveNow;
 DC.settings.onSettingsFontChange = onSettingsFontChange;
 DC.settings.onSettingsIconChange = onSettingsIconChange;
 DC.settings.onSettingsLangChange = onSettingsLangChange;
 DC.settings.openSettings = openSettings;
 DC.settings.readScale = readScale;
 DC.settings.settingsTabTrap = settingsTabTrap;
+DC.settings.syncAutoSaveToggle = syncAutoSaveToggle;
 })();
 

@@ -60,6 +60,9 @@ function applyStaticText(){
   var clearLbl = t('clearSearchAria');
   el.btnClearSearch.setAttribute('aria-label', clearLbl);
   el.btnClearSearch.title = clearLbl; // Fix (a11y audit I3): tooltip mirrors the accessible name
+  /* Fix (auto-save): the manual save button mirrors the app's aria-label/title pattern */
+  el.btnSaveNow.setAttribute('aria-label', t('saveNowButton'));
+  el.btnSaveNow.title = t('saveNowButton');
   el.btnClearSearch.classList.toggle('hidden', el.inpSearch.value.length === 0);
   el.impReportTitle.textContent = t('impReportTitle');
   /* Fix (a11y audit N1): the close glyph now lives in an aria-hidden span in the markup */

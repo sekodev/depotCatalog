@@ -334,8 +334,7 @@ function handleBulkApply(){
   state.selectedIds = {}; // selection cleared after apply
   state.page = 1;          // pagination reset to page 1
   DC.bulk.bulkPlan = null;
-  persist();
-  snapshotCurrentData();   // auto-backup snapshot
+  DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
   render();                // renderList self-heals the page number
   showSaveIndicator();
   var updatedN = ids.length;

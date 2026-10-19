@@ -121,12 +121,25 @@
    clearly distinguishable from the normal muted "Saving…/Saved." pill, in both themes.
    No fade-out: the element keeps .show until the next real save removes the modifier. */
 .save-indicator--unsaved{color:var(--warn);border-color:var(--warn)}
+/* Fix (auto-save): the manual "Save now" button that sits beside the persistent
+   "Changes not saved." pill. Amber to match that state; hidden unless it is shown. */
+.save-now{
+  font-size:.8rem;line-height:1;
+  background:var(--surface);border:1px solid var(--warn);color:var(--warn);
+  border-radius:999px;padding:.22rem .45rem;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+}
+.save-now:hover{border-color:var(--accent);color:var(--accent)}
+.save-now:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (prefers-reduced-motion: reduce){
   .save-indicator{transition:none}
   .save-indicator.show{transition:none}
   .toast{transition:none}
   .theme-switch{transition:none}
   .theme-switch::after{transition:none}
+  /* Fix (auto-save switch): the shared switch class respects reduced motion too */
+  .switch{transition:none}
+  .switch::after{transition:none}
 }
 /* Fix: removed dead .save-indicator:focus-visible rule — element is aria-hidden and not focusable (audit #9) */
 

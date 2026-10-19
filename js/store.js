@@ -7,6 +7,9 @@ DC.store = DC.store || {};
 /* Aliases to already-loaded modules (read once, at load time). */
 var LS_DATA = DC.const.LS_DATA;
 var LS_LEGACY = DC.const.LS_LEGACY;
+/* Fix (auto-save persistence): the auto-save preference key. Kept local to this module
+   (the same pattern backup.js uses for LS_SNAPS) because no other module reads it. */
+var LS_AUTOSAVE = 'depotCatalog.autoSave';
 var announce = DC.announce.announce;
 var el = DC.el;
 var showToast = DC.modal.showToast;
@@ -169,12 +172,15 @@ function checkStorage(){
 /* ================= Save indicator ================= */
 var savePhase1Timer = null;
 var savePhase2Timer = null;
-function showSaveIndicator(){
+/* The normal "Saving… → Saved." flash. Always runs regardless of the auto-save toggle,
+   because the Save-now button and the toggle-ON path need it even while auto-save is off. */
+function showSavedIndicator(){
   if (!DC.store.ok) return;
   clearTimeout(savePhase1Timer);
   clearTimeout(savePhase2Timer);
   /* Fix (clear actions): a real save supersedes the persistent unsaved state */
   el.saveIndicator.classList.remove('save-indicator--unsaved');
+  el.btnSaveNow.classList.add('hidden'); // Fix (auto-save): a real save hides the manual button
   el.saveIndicator.classList.add('show');
   el.saveIndText.textContent = t('saving');
   announce(t('saving'));
@@ -185,6 +191,13 @@ function showSaveIndicator(){
       el.saveIndicator.classList.remove('show');
     }, 3000);
   }, 700);
+}
+function showSaveIndicator(){
+  if (!DC.store.ok) return;
+  /* Fix (auto-save): with auto-save OFF nothing was written to storage, so "Saving… /
+     Saved." would be a lie — show the persistent unsaved state instead. */
+  if (!DC.store.autoSave){ showUnsavedIndicator(); return; }
+  showSavedIndicator();
 }
 /* Fix (clear actions): persistent "Changes not saved." state. Shown after an action
    that intentionally leaves no snapshot behind (Clear backup history / Clear all data).
@@ -197,14 +210,104 @@ function showUnsavedIndicator(){
   clearTimeout(savePhase2Timer);
   el.saveIndicator.classList.add('show', 'save-indicator--unsaved');
   el.saveIndText.textContent = t('changesNotSaved');
+  el.btnSaveNow.classList.remove('hidden'); // Fix (auto-save): offer the manual save
   announce(t('changesNotSaved'));
+}
+
+/* ================= Auto-save (Fix (auto-save)) ================= */
+/* Fix (auto-save persistence): the preference is now persisted under its own key, so a
+   user who turns auto-save OFF keeps it OFF across reloads. Stored as '1' (ON) / '0' (OFF);
+   a missing key means the factory default, ON. Anything unrecognised (corrupt or
+   hand-edited) also falls back to ON and is rewritten, so the key cannot stay invalid.
+   The read mirrors the try/catch convention of the other preference reads (readScale in
+   settings.js, detectLang in i18n.js). */
+function readAutoSave(){
+  var raw = null;
+  try { raw = localStorage.getItem(LS_AUTOSAVE); } catch(e){ return true; } // unreadable -> default
+  if (raw === '0') return false;
+  if (raw === '1' || raw === null) return true; // missing key -> factory default ON
+  try { localStorage.setItem(LS_AUTOSAVE, '1'); } catch(e){} // repair the invalid value
+  return true;
+}
+/* Read once at load time, before any module can look at the flag. The switch's
+   aria-checked is then driven from it by syncAutoSaveToggle() during init's render()
+   (init -> render -> applyStaticText -> applySettingsText), so the restored value is
+   reflected without any user interaction. */
+DC.store.autoSave = readAutoSave();
+var unsavedData = false;        // in-memory data changes not yet written to storage
+var beforeUnloadAttached = false;
+/* Shared mutation save used by every data mutation handler.
+   Auto-save ON  -> write the data + take a snapshot (unchanged behaviour).
+   Auto-save OFF -> hold everything in memory and flag the unsaved state. */
+function save(){
+  if (DC.store.autoSave){
+    persist();
+    DC.backup.snapshotCurrentData(); // call-time forward ref (backup.js loads after store.js)
+    unsavedData = false;
+    syncBeforeUnload();
+    return true;
+  }
+  unsavedData = true;
+  syncBeforeUnload();
+  return false;
+}
+/* Force a write regardless of the toggle: the Save-now button and switching auto-save
+   back ON. The clear/reset actions in settings.js call persist() directly instead. */
+function saveNow(){
+  var ok = persist();
+  if (ok) DC.backup.snapshotCurrentData();
+  if (ok) unsavedData = false;
+  syncBeforeUnload();
+  return ok;
+}
+function hasUnsavedChanges(){ return unsavedData; }
+/* The deliberate clear actions persist directly (bypassing the toggle). When the written
+   state matches the in-memory state again the unsaved flag must be dropped, so the
+   beforeunload warning detaches. Used by Clear all data; Clear backup history and Reset
+   to defaults leave it alone (they do not write pending data changes). */
+function markSaved(){ unsavedData = false; syncBeforeUnload(); }
+function setAutoSave(on){
+  DC.store.autoSave = !!on;
+  /* Fix (auto-save persistence): write the choice ('1' ON / '0' OFF). A failed write is
+     swallowed on purpose: the in-memory flag and the switch still update, only persistence
+     is lost for this session. Silent by design — a failed preference write is not worth
+     interrupting the user with an error (same convention as the theme/font/icon writes). */
+  try { localStorage.setItem(LS_AUTOSAVE, DC.store.autoSave ? '1' : '0'); } catch(e){}
+  /* Fix (auto-save switch): re-sync the switch UI from the flag in one place, so every
+     state change (user toggle or programmatic) keeps the control consistent. Call-time
+     forward ref: settings.js loads after store.js. */
+  if (DC.settings && DC.settings.syncAutoSaveToggle) DC.settings.syncAutoSaveToggle();
+  syncBeforeUnload();
+}
+/* Native "unsaved changes" prompt — only while auto-save is OFF and there are real
+   in-memory data changes (a merely missing snapshot must not trigger it). */
+function onBeforeUnload(ev){
+  ev.preventDefault();
+  ev.returnValue = ''; // required by Chrome to show the prompt
+  return '';
+}
+function syncBeforeUnload(){
+  var need = (!DC.store.autoSave) && unsavedData;
+  if (need && !beforeUnloadAttached){
+    window.addEventListener('beforeunload', onBeforeUnload);
+    beforeUnloadAttached = true;
+  } else if (!need && beforeUnloadAttached){
+    window.removeEventListener('beforeunload', onBeforeUnload);
+    beforeUnloadAttached = false;
+  }
 }
 
 /* Exports. */
 DC.store.checkStorage = checkStorage;
+DC.store.hasUnsavedChanges = hasUnsavedChanges;
 DC.store.loadState = loadState;
+DC.store.markSaved = markSaved;
 DC.store.persist = persist;
+DC.store.save = save;
+DC.store.saveNow = saveNow;
+DC.store.setAutoSave = setAutoSave;
 DC.store.showSaveIndicator = showSaveIndicator;
+DC.store.showSavedIndicator = showSavedIndicator;
 DC.store.showUnsavedIndicator = showUnsavedIndicator;
 })();
 

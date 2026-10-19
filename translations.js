@@ -125,6 +125,14 @@ window.DEPOT_LANGUAGES = [
       /* Fix (clear actions): persistent state after an action that deliberately
          leaves no snapshot behind (Clear backup history / Clear all data) */
       changesNotSaved: "Changes not saved.",
+      /* Fix (auto-save): Settings > Auto-save toggle + the manual "Save now" button */
+      autoSaveLabel: "Auto-save",
+      autoSaveTurnOffTitle: "⚠️ Turn off auto-save",
+      autoSaveTurnOffBody: "Auto-save is currently on. Turning it off means your changes will not be saved automatically. If you close or reload this page without saving, your changes will be lost.",
+      autoSaveTurnOffConfirm: "Turn off",
+      autoSaveDisabledAnnouncement: "Auto-save disabled.",
+      autoSaveEnabledAnnouncement: "Auto-save enabled. Changes saved.",
+      saveNowButton: "Save now",
       skipToMain: "Skip to main content",
       shortcutsAria: "Keyboard shortcuts",
       shortcutsTitle: "⌨️ Keyboard Shortcuts",
@@ -417,6 +425,14 @@ window.DEPOT_LANGUAGES = [
       saved: "Kaydedildi.",
       /* Fix (clear actions): kasıtlı olarak anlık görüntü bırakmayan işlemlerden sonraki kalıcı durum */
       changesNotSaved: "Değişiklikler kaydedilmedi.",
+      /* Fix (auto-save): Ayarlar > Otomatik kaydet anahtarı + "Şimdi kaydet" düğmesi */
+      autoSaveLabel: "Otomatik kaydet",
+      autoSaveTurnOffTitle: "⚠️ Otomatik kaydetmeyi kapat",
+      autoSaveTurnOffBody: "Otomatik kaydetme şu anda açık. Kapatırsanız değişiklikleriniz otomatik olarak kaydedilmeyecek. Bu sayfayı kaydetmeden kapatır veya yenilerseniz değişiklikleriniz kaybolur.",
+      autoSaveTurnOffConfirm: "Kapat",
+      autoSaveDisabledAnnouncement: "Otomatik kaydetme kapatıldı.",
+      autoSaveEnabledAnnouncement: "Otomatik kaydetme açıldı. Değişiklikler kaydedildi.",
+      saveNowButton: "Şimdi kaydet",
       skipToMain: "Ana içeriğe geç",
       shortcutsAria: "Klavye kısayolları",
       shortcutsTitle: "⌨️ Klavye Kısayolları",

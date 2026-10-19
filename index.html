@@ -113,6 +113,10 @@
         <span id="saveIndicator" class="save-indicator" aria-hidden="true">
           <span aria-hidden="true">💾</span><span id="saveIndText"></span>
         </span>
+        <!-- Fix (auto-save): manual save affordance, shown only while the persistent
+             "Changes not saved." state is visible. It is a SIBLING of the pill (which is
+             aria-hidden) so the button itself stays exposed to assistive tech. -->
+        <button type="button" id="btnSaveNow" class="save-now hidden"><span aria-hidden="true">💾</span></button>
       </span>
       <div id="depotMenu" class="depot-menu hidden" role="listbox" aria-label=""></div>
     </h1>
@@ -410,6 +414,17 @@
         <option value="large"></option>
         <option value="xl"></option>
       </select>
+    </div>
+    <!-- Auto-save toggle: preference persisted to localStorage (depotCatalog.autoSave).
+         Fix (auto-save switch): a <button role="switch"> that reuses the header theme
+         toggle's shared `.switch` styles. Its visual state comes from aria-checked, which
+         JS sets explicitly from the autoSave flag — never from browser form-state restore. -->
+    <div class="settings-row">
+      <label for="setAutoSave" id="lblSetAutoSave"></label>
+      <button type="button" id="setAutoSave" class="switch" role="switch" aria-checked="true" aria-labelledby="lblSetAutoSave">
+        <span class="sw-icon sw-sun" aria-hidden="true">⏸️</span>
+        <span class="sw-icon sw-moon" aria-hidden="true">💾</span>
+      </button>
     </div>
     <!-- Fix (clear actions): maintenance actions, above Reset to defaults.
          The two buttons are separated by a divider so their different blast

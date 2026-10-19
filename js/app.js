@@ -50,9 +50,11 @@ var hideSuggestions = DC.input.hideSuggestions;
 var iconPickerKeydown = DC.icons.iconPickerKeydown;
 var languagesValid = DC.i18n.languagesValid;
 var loadState = DC.store.loadState;
+var onAutoSaveToggle = DC.settings.onAutoSaveToggle;         // Fix (auto-save)
 var onClearAllData = DC.settings.onClearAllData;             // Fix (clear actions)
 var onClearBackupHistory = DC.settings.onClearBackupHistory; // Fix (clear actions)
 var onResetSettings = DC.settings.onResetSettings;
+var onSaveNow = DC.settings.onSaveNow;                       // Fix (auto-save)
 var onSettingsFontChange = DC.settings.onSettingsFontChange;
 var onSettingsIconChange = DC.settings.onSettingsIconChange;
 var onSettingsLangChange = DC.settings.onSettingsLangChange;
@@ -305,6 +307,9 @@ function bindEvents(){
   /* Fix (clear actions): maintenance actions in the settings dialog */
   el.btnClearBackup.addEventListener('click', onClearBackupHistory);
   el.btnClearAll.addEventListener('click', onClearAllData);
+  /* Fix (auto-save): session Auto-save toggle + the manual save button */
+  el.setAutoSave.addEventListener('click', onAutoSaveToggle); // Fix (auto-save switch): a <button> fires click for both Enter and Space
+  el.btnSaveNow.addEventListener('click', onSaveNow);
   el.btnExport.addEventListener('click', handleExport);
   el.btnImportTrigger.addEventListener('click', function(){
     try { el.inpImport.click(); } catch(e){}

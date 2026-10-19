@@ -113,7 +113,7 @@ async function saveInlineEdit(){
   it.amount = amountRes.value; // Fix (Phase 4): persist edited amount
   it.category = category;      // Fix (category): persist edited category (no validation)
   state.editingId = null;
-  persist(); snapshotCurrentData();
+  DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
   renderList();
   showSaveIndicator();
   showToast(t('updated'), 'success');

@@ -128,7 +128,7 @@ function selectDepot(id){
   hideImportReport();                             // dismiss import notice
   if (!el.overlay.classList.contains('hidden')) closeConfirm(false); // close any modal
   closeDepotMenu();
-  persist(); snapshotCurrentData();
+  DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
   showSaveIndicator();
   render();
   applyFavicon(); // Fix (depot icon picker): favicon follows the active depot
@@ -149,7 +149,7 @@ function openAddDepotModal(){
     state.page = 1;
     state.editingId = null;
     hideImportReport();
-    persist(); snapshotCurrentData();
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     render();
     applyFavicon(); // Fix (favicon on load): new depot became active (may reset the icon to 📦)
     showSaveIndicator();
@@ -166,7 +166,7 @@ function openEditDepot(id){
     if (name === null) return;
     if (!name){ setInvalid(el.modalInput, true); showToast(t('depotNameReq'), 'error'); announce(t('depotNameReq'), true); return; } // Fix (a11y audit C1)
     dep.name = name;
-    persist(); snapshotCurrentData();
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     render();
     showSaveIndicator();
     showToast(t('depotRenamed'), 'success');
@@ -201,7 +201,7 @@ function openDeleteDepot(id){
     el.btnClearSearch.classList.add('hidden');
     hideImportReport();
     delete state.depotIcons[id]; // Fix (depot icon picker): drop the icon with its depot
-    persist(); snapshotCurrentData();
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     render();
     applyFavicon(); // Fix (depot icon picker): active depot may have changed
     showSaveIndicator();

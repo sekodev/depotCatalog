@@ -110,7 +110,7 @@ function handleDeleteSelected(){
     dep.items = dep.items.filter(function(it){ return !sel[it.id]; });
     syncItemsRef();
     state.selectedIds = {};
-    persist(); snapshotCurrentData(); // auto-backup snapshot
+    DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
     render();                          // renderList self-heals the page number
     showSaveIndicator();
     showToast(t('nDeleted', { n: n }), 'success');

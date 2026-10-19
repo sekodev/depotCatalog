@@ -55,4 +55,6 @@
    divider between them keeps the two different blast radii visually distinct. */
 .settings-row > .btn{width:100%}
 .settings-sep{border-top:1px solid var(--border);margin:0 0 .85rem}
+/* Fix (auto-save switch): the Auto-save toggle is now a <button role="switch"> styled by
+   the shared `.switch` class (css/footer.css) — the old checkbox rules were removed. */
 

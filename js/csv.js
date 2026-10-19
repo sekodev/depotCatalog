@@ -224,7 +224,7 @@ function handleImportFile(file){
          notice reports it and persist() below makes it durable. */
       var iconApplied = result.depotIcon ? result.depotIcon : null;
       if (iconApplied) DC.icons.setDepotIcon(state.activeDepotId, iconApplied);
-      persist(); snapshotCurrentData();
+      DC.store.save(); // Fix (auto-save): shared save honors the auto-save toggle
       // Show the page that contains the first newly added item
       if (firstNewId !== null){
         var fl = getFilteredItems();
